@@ -39,10 +39,12 @@ const PEOPLE = {
   // BrightPath
   BS:  { id: 'BS',  name: 'Brandon Spears',   first: 'Brandon',  org: 'brightpath',  role: 'Executive Director', initials: 'BS' },
   LC:  { id: 'LC',  name: 'Lisa Carton',      first: 'Lisa',     org: 'brightpath',  role: 'Operations',      initials: 'LC' },
-  NI:  { id: 'NI',  name: 'Nicole',           first: 'Nicole',   org: 'brightpath',  role: 'Programs',        initials: 'N'  },
-  SN:  { id: 'SN',  name: 'Stephanie Nole',   first: 'Stephanie',org: 'brightpath',  role: 'Director of Services', initials: 'SN' },
+  NI:  { id: 'NI',  name: 'Nicole Buechler',  first: 'Nicole',   org: 'brightpath',  role: 'Programs',        initials: 'NB' },
+  SN:  { id: 'SN',  name: 'Stephanie Noll',   first: 'Stephanie',org: 'brightpath',  role: 'Director of Services', initials: 'SN' },
   JPM: { id: 'JPM', name: 'John Paul Miller', first: 'JP',       org: 'brightpath',  role: 'QA / Training',   initials: 'JM' },
-  JE:  { id: 'JE',  name: 'Jeremy',           first: 'Jeremy',   org: 'brightpath',  role: 'IT',              initials: 'J'  },
+  JE:  { id: 'JE',  name: 'Jeremy Garrigan',  first: 'Jeremy',   org: 'brightpath',  role: 'IT',              initials: 'JG' },
+  RJ:  { id: 'RJ',  name: 'Rick Joslin',      first: 'Rick',     org: 'brightpath',  role: 'Super Admin',     initials: 'RJ' },
+  SR:  { id: 'SR',  name: 'Secellia Riley',   first: 'Secellia', org: 'brightpath',  role: 'Super Admin',     initials: 'SR' },
 };
 const PEOPLE_LIST = Object.values(PEOPLE);
 
@@ -136,14 +138,15 @@ const TASKS = [
   // ── IT Security ───────────────────────────────────────────────────────────
   T('sec-1', 'sec', 'Provision Google Workspace super-admin access for S360',
     '2026-05-12', ['RD'], ['JE'], 'high',
-    { comments: [
+    { notes: 'Current Super Admins: Brandon Spears, Rick Joslin, Nicole Buechler, Secellia Riley, Stephanie Noll, Jeremy Garrigan, Michael Sevilla. Jeremy to grant S360 access via Admin Console → Users.',
+      comments: [
       { who: 'JE', when: '2026-05-08T11:02', text: 'Will create a delegated admin account scoped to audit + identity. Need Rey\'s S360 email.' },
     ] }),
   T('sec-2', 'sec', 'Security posture assessment (current state)',
     '2026-05-17', ['RD', 'MS'], ['JE', 'LC'], 'high'),
   T('sec-3', 'sec', 'SSO standardization plan across SaaS',
     '2026-05-22', ['RD'], ['LC', 'JE'], 'high',
-    { notes: 'Inventory: QBO, Zoho, Centrally HR, Therap EHR, Star Services LMS, Slack, Notion' }),
+    { notes: 'Inventory: QBO, Zoho, Centrally HR, Therap EHR, Star Services LMS, JazzHR (ATS), When I Work (WIW), OSMOR, Slack, Notion' }),
   T('sec-4', 'sec', 'MFA enforcement & recovery flow documentation',
     '2026-05-22', ['MS'], ['LC'], 'high'),
   T('sec-5', 'sec', 'Onboarding / offboarding access playbook',
