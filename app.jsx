@@ -280,7 +280,7 @@ function App() {
               </span>
             </div>
           </div>
-          <window.GanttChart today={today} onBarClick={(wsId) => { setFocusWs(focusWs === wsId ? null : wsId); setTab('workplan'); }} />
+          <window.GanttChart today={today} tasks={tasks} onBarClick={(wsId) => { setFocusWs(focusWs === wsId ? null : wsId); setTab('workplan'); }} />
         </section>
       )}
 

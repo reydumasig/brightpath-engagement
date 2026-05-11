@@ -2,7 +2,7 @@
 // Renders the 13-week timeline with monthly bands, weekly columns, today marker,
 // per-workstream bars, and milestone diamonds. Hover any bar/diamond for detail.
 
-const GanttChart = ({ today, onBarClick }) => {
+const GanttChart = ({ today, onBarClick, tasks = [] }) => {
   const totalCols = 13;
   const dayWidthPct = 100 / (totalCols * 7);
   const todayDay = Math.max(0, Math.min(window.totalDays - 1, window.dayOfEngagement(today)));
@@ -23,6 +23,13 @@ const GanttChart = ({ today, onBarClick }) => {
   }
 
   const [hover, setHover] = React.useState(null); // {kind, x, y, item}
+  const [selectedBar, setSelectedBar] = React.useState(null); // bar object or null
+
+  const taskMap = React.useMemo(() => {
+    const m = {};
+    for (const t of tasks) m[t.id] = t;
+    return m;
+  }, [tasks]);
 
   const onEnter = (item, kind) => (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -122,7 +129,7 @@ const GanttChart = ({ today, onBarClick }) => {
                           style={{ left: `${left}%`, width: `${width}%` }}
                           onMouseEnter={onEnter({ ...bar, ws }, 'bar')}
                           onMouseLeave={onLeave}
-                          onClick={() => onBarClick && onBarClick(ws.id)}>
+                          onClick={() => setSelectedBar(selectedBar?.label === bar.label && selectedBar?.ws.id === ws.id ? null : { ...bar, ws })}>
                           <span className="gantt-bar-label">{bar.label}</span>
                         </div>
                       );
@@ -166,6 +173,50 @@ const GanttChart = ({ today, onBarClick }) => {
           </div>
         </div>
       )}
+
+      {selectedBar && (() => {
+        const barTasks = (selectedBar.taskIds || []).map((id) => taskMap[id]).filter(Boolean);
+        const ws = selectedBar.ws;
+        const done = barTasks.filter((t) => t.status === 'done').length;
+        return (
+          <div className="gantt-detail" style={{ '--ws-color': ws.color, '--ws-tint': ws.tint }}>
+            <div className="gantt-detail-head">
+              <div className="gantt-detail-title">
+                <span className="gantt-detail-dot" style={{ background: ws.color }} />
+                <span className="gantt-detail-ws">{ws.short}</span>
+                <span className="gantt-detail-sep">›</span>
+                <span className="gantt-detail-bar">{selectedBar.label}</span>
+                <span className="gantt-detail-dates">
+                  {window.fmtMon(window.addDays(window.ENGAGEMENT_START, selectedBar.d0))} – {window.fmtMon(window.addDays(window.ENGAGEMENT_START, selectedBar.d1))}
+                </span>
+              </div>
+              <div className="gantt-detail-meta">
+                <span className="gantt-detail-count">{done}/{barTasks.length} done</span>
+                <button className="gantt-detail-close" onClick={() => setSelectedBar(null)}>✕</button>
+              </div>
+            </div>
+            <div className="gantt-detail-tasks">
+              {barTasks.map((t) => {
+                const st = window.STATUS[t.status] || window.STATUS['not_started'];
+                const owners = [...(t.owner_s360 || []), ...(t.owner_client || [])];
+                return (
+                  <div key={t.id} className="gantt-detail-row">
+                    <span className="gantt-detail-status" style={{ background: st.bg, color: st.fg }}>{st.label}</span>
+                    <span className="gantt-detail-name">{t.title}</span>
+                    <span className="gantt-detail-due">{t.due ? window.fmtMon(t.due) : '—'}</span>
+                    <span className="gantt-detail-owners">{owners.map((o) => window.PEOPLE[o]?.abbr || o).join(', ')}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="gantt-detail-footer">
+              <button className="gantt-detail-link" onClick={() => { onBarClick && onBarClick(ws.id); setSelectedBar(null); }}>
+                View full workplan for {ws.name} →
+              </button>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };

@@ -70,21 +70,21 @@ const e = (n) => n * 7 - 1; // end-of-week is inclusive last day
 
 const GANTT_BARS = [
   // IT Security — front-loaded, with lighter tail through W3-4 finalization
-  { ws: 'sec',    label: 'Posture assessment',         d0: w(1),     d1: w(1) + 5  },
-  { ws: 'sec',    label: 'SSO + MFA + playbook',       d0: w(1) + 2, d1: e(2)      },
-  { ws: 'sec',    label: 'Roadmap delivered',          d0: w(2) + 3, d1: e(2)      },
-  { ws: 'sec',    label: 'Quick-wins + finalization',  d0: w(2) + 4, d1: w(4) + 2, faded: true },
+  { ws: 'sec',    label: 'Posture assessment',         d0: w(1),     d1: w(1) + 5,  taskIds: ['sec-baa', 'sec-1', 'sec-2'] },
+  { ws: 'sec',    label: 'SSO + MFA + playbook',       d0: w(1) + 2, d1: e(2),      taskIds: ['sec-3', 'sec-4', 'sec-ou', 'sec-superadmin', 'sec-5', 'sec-2fa-b'] },
+  { ws: 'sec',    label: 'Roadmap delivered',          d0: w(2) + 3, d1: e(2),      taskIds: ['sec-6'] },
+  { ws: 'sec',    label: 'Quick-wins + finalization',  d0: w(2) + 4, d1: w(4) + 2,  taskIds: ['sec-7', 'sec-8', 'sec-2fa-c'], faded: true },
 
   // MOS — kicks W3, runs through W13
-  { ws: 'mos',    label: 'Wireframe + scoping',        d0: w(3),     d1: e(4)      },
-  { ws: 'mos',    label: 'Phase 1 integration',        d0: w(4) + 2, d1: w(7) + 2  },
-  { ws: 'mos',    label: 'Active use by leadership',   d0: w(6),     d1: e(8)      },
-  { ws: 'mos',    label: 'Refine + custom roadmap',    d0: w(9),     d1: e(13)     },
+  { ws: 'mos',    label: 'Wireframe + scoping',        d0: w(3),     d1: e(4),      taskIds: ['mos-1', 'mos-2', 'mos-3', 'mos-4', 'mos-5', 'mos-6'] },
+  { ws: 'mos',    label: 'Phase 1 integration',        d0: w(4) + 2, d1: w(7) + 2,  taskIds: ['mos-7', 'mos-8', 'mos-9', 'mos-10'] },
+  { ws: 'mos',    label: 'Active use by leadership',   d0: w(6),     d1: e(8),      taskIds: ['mos-10', 'mos-11'] },
+  { ws: 'mos',    label: 'Refine + custom roadmap',    d0: w(9),     d1: e(13),     taskIds: ['mos-12', 'mos-13', 'mos-14', 'mos-15'] },
 
   // Claude — Month 2, Jun 1 → mid Jul
-  { ws: 'claude', label: 'Setup + super users',        d0: w(4),     d1: w(5) + 6  }, // Jun 1–14
-  { ws: 'claude', label: 'Company-wide kickoff',       d0: w(6),     d1: w(6) + 1  }, // Jun 15
-  { ws: 'claude', label: 'Office hours (4 wks)',       d0: w(6) + 2, d1: w(9) + 4  },
+  { ws: 'claude', label: 'Setup + super users',        d0: w(4),     d1: w(5) + 6,  taskIds: ['cl-1', 'cl-2', 'cl-3', 'cl-4', 'cl-5', 'cl-6'] }, // Jun 1–14
+  { ws: 'claude', label: 'Company-wide kickoff',       d0: w(6),     d1: w(6) + 1,  taskIds: ['cl-7', 'cl-8'] }, // Jun 15
+  { ws: 'claude', label: 'Office hours (4 wks)',       d0: w(6) + 2, d1: w(9) + 4,  taskIds: ['cl-9', 'cl-10', 'cl-11', 'cl-12'] },
 ];
 
 // ── Milestones (gantt diamonds) ─────────────────────────────────────────────
