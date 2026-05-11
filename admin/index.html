@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1440">
+  <title>Admin — BrightPath × S360</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f6f7f9; --surface: #ffffff; --surface-2: #fafbfc;
+      --border: #e5e7ec; --border-strong: #d1d5db;
+      --text: #0f172a; --text-2: #475569; --text-3: #64748b; --text-4: #94a3b8;
+      --radius-sm: 6px; --radius: 10px; --radius-lg: 14px;
+      --font: 'Geist', ui-sans-serif, system-ui, -apple-system, sans-serif;
+      --mono: 'Geist Mono', ui-monospace, Menlo, monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+
+    /* ── Header ── */
+    .adm-hdr {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 0 32px; display: flex; align-items: center;
+      justify-content: space-between; height: 60px;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .adm-hdr-left { display: flex; align-items: center; gap: 20px; }
+    .adm-brand { display: flex; align-items: center; gap: 8px; }
+    .adm-brand-mark { font-family: var(--mono); font-weight: 600; font-size: 10px; letter-spacing: 0.08em; background: #0f172a; color: #fff; padding: 4px 6px; border-radius: 4px; }
+    .adm-brand-x { color: var(--text-4); }
+    .adm-brand-client { font-weight: 600; font-size: 14px; }
+    .adm-hdr-divider { width: 1px; height: 20px; background: var(--border); }
+    .adm-hdr-title { font-size: 14px; font-weight: 500; color: var(--text-2); }
+    .adm-hdr-right { display: flex; align-items: center; gap: 10px; }
+    .adm-save-status { font-size: 12px; font-family: var(--mono); }
+    .adm-save-dirty { color: #b45309; }
+    .adm-save-clean { color: #16a34a; }
+    .adm-btn-primary { font: inherit; font-size: 13px; font-weight: 500; background: #0f172a; color: #fff; border: 0; padding: 8px 16px; border-radius: 7px; cursor: pointer; }
+    .adm-btn-primary:hover { background: #1e293b; }
+    .adm-btn-ghost { font: inherit; font-size: 13px; color: var(--text-2); background: transparent; border: 1px solid var(--border); padding: 7px 14px; border-radius: 7px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
+    .adm-btn-ghost:hover { border-color: var(--border-strong); color: var(--text); }
+
+    /* ── Tabs ── */
+    .adm-tabs { display: flex; gap: 2px; padding: 0 32px; background: var(--surface); border-bottom: 1px solid var(--border); }
+    .adm-tab { font: inherit; font-size: 13.5px; font-weight: 500; color: var(--text-3); background: transparent; border: 0; padding: 12px 16px 14px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+    .adm-tab:hover { color: var(--text); }
+    .adm-tab.active { color: var(--text); border-bottom-color: var(--text); }
+
+    /* ── Content ── */
+    .adm-content { max-width: 1200px; margin: 0 auto; padding: 32px; display: flex; flex-direction: column; gap: 28px; }
+
+    /* ── Group card ── */
+    .adm-group { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+    .adm-group-head { display: flex; align-items: center; gap: 10px; padding: 14px 18px; background: var(--surface-2); border-bottom: 1px solid var(--border); }
+    .adm-group-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .adm-group-label { font-weight: 600; font-size: 14px; }
+    .adm-group-count { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--text-3); }
+
+    /* ── Table ── */
+    .adm-table { width: 100%; border-collapse: collapse; }
+    .adm-table th { font-family: var(--mono); font-size: 10px; font-weight: 500; letter-spacing: 0.1em; color: var(--text-3); text-transform: uppercase; padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); background: var(--surface-2); white-space: nowrap; }
+    .adm-table td { padding: 7px 14px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+    .adm-row:last-child td { border-bottom: 0; }
+    .adm-row:hover td { background: #fafbfc; }
+    .adm-row-new td { background: #f0fdf4 !important; }
+    .adm-row-deleted { opacity: 0.5; }
+    .adm-row-placeholder td:first-child { position: relative; }
+    .adm-row-placeholder td:first-child::before { content: '⚠ '; font-size: 11px; color: #b45309; }
+
+    /* ── Inputs ── */
+    .adm-input { font: inherit; font-size: 13px; padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); width: 100%; min-width: 0; }
+    .adm-input:focus { outline: none; border-color: #94a3b8; background: #fff; }
+    .adm-input:disabled { background: var(--surface-2); color: var(--text-3); cursor: not-allowed; }
+    .adm-select { font: inherit; font-size: 12.5px; padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); cursor: pointer; }
+    .adm-select:focus { outline: none; border-color: #94a3b8; }
+    .adm-multi { font: inherit; font-size: 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); width: 130px; min-height: 56px; max-height: 56px; }
+    .adm-date { width: 150px; }
+
+    /* ── Action buttons ── */
+    .adm-del { background: transparent; border: 0; color: var(--text-4); font-size: 20px; cursor: pointer; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; line-height: 1; }
+    .adm-del:hover { background: #fee2e2; color: #dc2626; }
+    .adm-restore { font: inherit; font-size: 11.5px; font-weight: 500; color: #16a34a; background: #f0fdf4; border: 1px solid #86efac; padding: 4px 10px; border-radius: 5px; cursor: pointer; }
+    .adm-restore:hover { background: #dcfce7; }
+    .adm-deleted-title { text-decoration: line-through; color: var(--text-3); font-size: 13px; }
+    .adm-add-task { display: block; width: 100%; background: transparent; border: 0; border-top: 1px solid var(--border); padding: 11px 18px; font: inherit; font-size: 13px; color: var(--text-3); cursor: pointer; text-align: left; }
+    .adm-add-task:hover { background: var(--surface-2); color: var(--text); }
+    .adm-title-wrap { display: flex; align-items: center; gap: 5px; }
+    .adm-mile-flag { color: #d97706; font-size: 10px; flex-shrink: 0; }
+
+    /* ── Section card (People / Engagement) ── */
+    .adm-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+    .adm-section-head { padding: 18px 20px; border-bottom: 1px solid var(--border); background: var(--surface-2); }
+    .adm-section-head h3 { margin: 0 0 4px; font-size: 16px; font-weight: 600; }
+    .adm-section-head p { margin: 0; font-size: 13px; color: var(--text-3); }
+    .adm-cell-id { font-family: var(--mono); font-size: 11px; color: var(--text-4); width: 52px; }
+    .adm-cell-org { width: 110px; }
+    .adm-org-badge { font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: 0.05em; padding: 3px 8px; border-radius: 4px; }
+    .adm-org-badge.s360 { background: #0f172a; color: #fff; }
+    .adm-org-badge.brightpath { background: #e0f2fe; color: #0369a1; }
+
+    /* ── Engagement form ── */
+    .adm-form { padding: 20px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .adm-field { display: flex; flex-direction: column; gap: 6px; }
+    .adm-field label { font-size: 11px; font-weight: 500; color: var(--text-3); font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.08em; }
+
+    /* ── Toast ── */
+    .adm-toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #0f172a; color: #fff; padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 500; z-index: 9999; animation: adm-fade 2.2s ease forwards; pointer-events: none; }
+    @keyframes adm-fade { 0%,60% { opacity: 1; } 100% { opacity: 0; } }
+
+    /* ── Reset section ── */
+    .adm-danger-zone { background: var(--surface); border: 1px solid #fca5a5; border-radius: var(--radius-lg); padding: 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .adm-danger-label h4 { margin: 0 0 4px; font-size: 14px; font-weight: 600; color: #dc2626; }
+    .adm-danger-label p { margin: 0; font-size: 13px; color: var(--text-3); }
+    .adm-btn-danger { font: inherit; font-size: 13px; font-weight: 500; background: #fef2f2; color: #dc2626; border: 1px solid #fca5a5; padding: 7px 14px; border-radius: 7px; cursor: pointer; }
+    .adm-btn-danger:hover { background: #fee2e2; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="../data.js"></script>
+  <script type="text/babel">
+    const ADMIN_KEY = 'brightpath-admin-v1';
+
+    const loadAdmin = () => {
+      try { return JSON.parse(localStorage.getItem(ADMIN_KEY) || '{}'); } catch(e) { return {}; }
+    };
+    const saveAdmin = (d) => {
+      try { localStorage.setItem(ADMIN_KEY, JSON.stringify(d)); } catch(e) {}
+    };
+
+    // ── Toast ────────────────────────────────────────────────────────────────
+    function Toast({ msg }) {
+      const [key, setKey] = React.useState(0);
+      React.useEffect(() => { if (msg) setKey(k => k + 1); }, [msg]);
+      if (!msg) return null;
+      return <div key={key} className="adm-toast">{msg}</div>;
+    }
+
+    // ── Main App ─────────────────────────────────────────────────────────────
+    function AdminApp() {
+      const [tab, setTab] = React.useState('tasks');
+      const [adm, setAdm] = React.useState(loadAdmin);
+      const [dirty, setDirty] = React.useState(false);
+      const [toast, setToast] = React.useState('');
+
+      const patch = (key, val) => {
+        setAdm(prev => ({ ...prev, [key]: val }));
+        setDirty(true);
+      };
+
+      const onSave = () => {
+        saveAdmin(adm);
+        setDirty(false);
+        setToast('Changes saved — refresh the dashboard to see updates.');
+        setTimeout(() => setToast(''), 2400);
+      };
+
+      const onResetAll = () => {
+        if (!confirm('Clear all admin overrides? This resets tasks, people, and engagement edits.')) return;
+        localStorage.removeItem(ADMIN_KEY);
+        setAdm({});
+        setDirty(false);
+        setToast('All admin overrides cleared.');
+        setTimeout(() => setToast(''), 2400);
+      };
+
+      return (
+        <div className="adm-app">
+          <header className="adm-hdr">
+            <div className="adm-hdr-left">
+              <div className="adm-brand">
+                <span className="adm-brand-mark">S360</span>
+                <span className="adm-brand-x">×</span>
+                <span className="adm-brand-client">BrightPath</span>
+              </div>
+              <div className="adm-hdr-divider" />
+              <span className="adm-hdr-title">Admin Panel</span>
+            </div>
+            <div className="adm-hdr-right">
+              {dirty
+                ? <span className="adm-save-status adm-save-dirty">● Unsaved changes</span>
+                : <span className="adm-save-status adm-save-clean">✓ All saved</span>}
+              <button className="adm-btn-primary" onClick={onSave}>Save changes</button>
+              <a className="adm-btn-ghost" href="/">← Dashboard</a>
+            </div>
+          </header>
+
+          <nav className="adm-tabs">
+            {[['tasks','Tasks'],['people','People'],['engagement','Engagement']].map(([id, label]) => (
+              <button key={id} className={`adm-tab ${tab === id ? 'active' : ''}`} onClick={() => setTab(id)}>
+                {label}
+              </button>
+            ))}
+          </nav>
+
+          <div className="adm-content">
+            {tab === 'tasks'      && <TasksTab adm={adm} patch={patch} />}
+            {tab === 'people'     && <PeopleTab adm={adm} patch={patch} />}
+            {tab === 'engagement' && <EngagementTab adm={adm} patch={patch} />}
+
+            <div className="adm-danger-zone">
+              <div className="adm-danger-label">
+                <h4>Reset all admin overrides</h4>
+                <p>Clears all task edits, people name changes, and engagement overrides. User status changes and comments are kept.</p>
+              </div>
+              <button className="adm-btn-danger" onClick={onResetAll}>Reset admin data</button>
+            </div>
+          </div>
+
+          <Toast msg={toast} />
+        </div>
+      );
+    }
+
+    // ── Tasks Tab ────────────────────────────────────────────────────────────
+    function TasksTab({ adm, patch }) {
+      const taskOvr  = adm.taskOverrides || {};
+      const deletedIds = new Set(adm.deletedIds || []);
+      const newTasks  = adm.newTasks || [];
+      const allTasks  = [...window.TASKS, ...newTasks];
+
+      const updateTask = (taskId, field, value) => {
+        patch('taskOverrides', { ...taskOvr, [taskId]: { ...(taskOvr[taskId] || {}), [field]: value } });
+      };
+      const deleteTask = (taskId) => {
+        const ids = [...(adm.deletedIds || [])];
+        if (!ids.includes(taskId)) ids.push(taskId);
+        patch('deletedIds', ids);
+      };
+      const restoreTask = (taskId) => {
+        patch('deletedIds', (adm.deletedIds || []).filter(id => id !== taskId));
+      };
+      const addTask = (wsKey) => {
+        const id = `custom-${Date.now()}`;
+        patch('newTasks', [...newTasks, {
+          id, ws: wsKey, title: 'New task', due: null,
+          owner_s360: [], owner_client: [], priority: 'med',
+          status: 'not_started', notes: '', isMilestone: false,
+        }]);
+      };
+      const updateNewTask = (taskId, field, value) => {
+        patch('newTasks', newTasks.map(t => t.id === taskId ? { ...t, [field]: value } : t));
+      };
+      const deleteNewTask = (taskId) => {
+        patch('newTasks', newTasks.filter(t => t.id !== taskId));
+      };
+
+      const GROUPS = [
+        { key: 'sec',    label: 'IT Security',       color: window.WORKSTREAMS.sec.color },
+        { key: 'mos',    label: 'MOS Rollout',        color: window.WORKSTREAMS.mos.color },
+        { key: 'claude', label: 'Claude AI',          color: window.WORKSTREAMS.claude.color },
+        { key: 'admin',  label: 'Engagement & Admin', color: '#475569' },
+      ];
+
+      return (
+        <>
+          {GROUPS.map(g => {
+            const gTasks   = allTasks.filter(t => t.ws === g.key);
+            const gActive  = gTasks.filter(t => !deletedIds.has(t.id));
+            const gDeleted = gTasks.filter(t =>  deletedIds.has(t.id));
+            return (
+              <div key={g.key} className="adm-group">
+                <div className="adm-group-head">
+                  <span className="adm-group-dot" style={{ background: g.color }} />
+                  <span className="adm-group-label">{g.label}</span>
+                  <span className="adm-group-count">
+                    {gActive.length} active{gDeleted.length ? ` · ${gDeleted.length} deleted` : ''}
+                  </span>
+                </div>
+                <table className="adm-table">
+                  <thead>
+                    <tr>
+                      <th style={{ minWidth: 280 }}>Task</th>
+                      <th>S360 Owner</th>
+                      <th>BrightPath Owner</th>
+                      <th>Priority</th>
+                      <th>Due Date</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {gActive.map(task => {
+                      const isNew = !!newTasks.find(t => t.id === task.id);
+                      const merged = isNew ? task : { ...task, ...(taskOvr[task.id] || {}) };
+                      return (
+                        <TaskRow key={task.id} task={merged} isNew={isNew}
+                          onUpdate={(f, v) => isNew ? updateNewTask(task.id, f, v) : updateTask(task.id, f, v)}
+                          onDelete={() => isNew ? deleteNewTask(task.id) : deleteTask(task.id)}
+                        />
+                      );
+                    })}
+                    {gDeleted.map(task => (
+                      <tr key={task.id + '-del'} className="adm-row adm-row-deleted">
+                        <td colSpan={5}><span className="adm-deleted-title">{task.title}</span></td>
+                        <td><button className="adm-restore" onClick={() => restoreTask(task.id)}>Restore</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <button className="adm-add-task" onClick={() => addTask(g.key)}>
+                  + Add task to {g.label}
+                </button>
+              </div>
+            );
+          })}
+        </>
+      );
+    }
+
+    function TaskRow({ task, isNew, onUpdate, onDelete }) {
+      const s360P = window.PEOPLE_LIST.filter(p => p.org === 's360');
+      const bpP   = window.PEOPLE_LIST.filter(p => p.org === 'brightpath');
+      const dueVal = task.due
+        ? (task.due instanceof Date ? task.due.toISOString().slice(0,10) : String(task.due))
+        : '';
+      const s360Val = Array.isArray(task.owner_s360)   ? task.owner_s360   : [];
+      const bpVal   = Array.isArray(task.owner_client) ? task.owner_client : [];
+
+      return (
+        <tr className={`adm-row ${isNew ? 'adm-row-new' : ''}`}>
+          <td>
+            <div className="adm-title-wrap">
+              {task.isMilestone && <span className="adm-mile-flag">◆</span>}
+              <input type="text" className="adm-input" value={task.title}
+                onChange={e => onUpdate('title', e.target.value)} />
+            </div>
+          </td>
+          <td>
+            <select multiple className="adm-multi" value={s360Val}
+              onChange={e => onUpdate('owner_s360', Array.from(e.target.selectedOptions, o => o.value))}>
+              {s360P.map(p => <option key={p.id} value={p.id}>{p.first}</option>)}
+            </select>
+          </td>
+          <td>
+            <select multiple className="adm-multi" value={bpVal}
+              onChange={e => onUpdate('owner_client', Array.from(e.target.selectedOptions, o => o.value))}>
+              {bpP.map(p => <option key={p.id} value={p.id}>{p.first}</option>)}
+            </select>
+          </td>
+          <td>
+            <select className="adm-select" value={task.priority || 'med'}
+              onChange={e => onUpdate('priority', e.target.value)}>
+              <option value="high">High</option>
+              <option value="med">Med</option>
+              <option value="low">Low</option>
+            </select>
+          </td>
+          <td>
+            <input type="date" className="adm-input adm-date" value={dueVal}
+              onChange={e => onUpdate('due', e.target.value || null)} />
+          </td>
+          <td>
+            <button className="adm-del" onClick={onDelete} title="Delete">×</button>
+          </td>
+        </tr>
+      );
+    }
+
+    // ── People Tab ───────────────────────────────────────────────────────────
+    function PeopleTab({ adm, patch }) {
+      const peopleOvr = adm.peopleOverrides || {};
+      const updatePerson = (id, field, value) => {
+        patch('peopleOverrides', { ...peopleOvr, [id]: { ...(peopleOvr[id] || {}), [field]: value } });
+      };
+
+      return (
+        <div className="adm-section">
+          <div className="adm-section-head">
+            <h3>Team Members</h3>
+            <p>Edit names and roles. Nicole (NI) and Jeremy (JE) have placeholder last names — fill them in here.</p>
+          </div>
+          <table className="adm-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Full Name</th>
+                <th>Role</th>
+                <th>Org</th>
+              </tr>
+            </thead>
+            <tbody>
+              {window.PEOPLE_LIST.map(p => {
+                const ovr = peopleOvr[p.id] || {};
+                const isPlaceholder = p.id === 'NI' || p.id === 'JE';
+                return (
+                  <tr key={p.id} className={`adm-row ${isPlaceholder ? 'adm-row-placeholder' : ''}`}>
+                    <td className="adm-cell-id">{p.id}</td>
+                    <td>
+                      <input type="text" className="adm-input"
+                        value={ovr.name !== undefined ? ovr.name : p.name}
+                        onChange={e => updatePerson(p.id, 'name', e.target.value)}
+                        placeholder={isPlaceholder ? 'First Last' : undefined}
+                      />
+                    </td>
+                    <td>
+                      <input type="text" className="adm-input"
+                        value={ovr.role !== undefined ? ovr.role : p.role}
+                        onChange={e => updatePerson(p.id, 'role', e.target.value)}
+                      />
+                    </td>
+                    <td className="adm-cell-org">
+                      <span className={`adm-org-badge ${p.org}`}>
+                        {p.org === 's360' ? 'S360' : 'BrightPath'}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    // ── Engagement Tab ───────────────────────────────────────────────────────
+    function EngagementTab({ adm, patch }) {
+      const engOvr = adm.engagementOverrides || {};
+      const update = (field, value) => patch('engagementOverrides', { ...engOvr, [field]: value });
+      const fee = engOvr.fee !== undefined ? engOvr.fee : window.ENGAGEMENT.fee;
+      const sm  = engOvr.successManager !== undefined ? engOvr.successManager : window.ENGAGEMENT.successManager;
+
+      return (
+        <div className="adm-section">
+          <div className="adm-section-head">
+            <h3>Engagement Details</h3>
+            <p>Edit the flat fee and success manager. Start/end dates are set in data.js.</p>
+          </div>
+          <div className="adm-form">
+            <div className="adm-field">
+              <label>Client</label>
+              <input type="text" className="adm-input" value={window.ENGAGEMENT.client} disabled />
+            </div>
+            <div className="adm-field">
+              <label>Provider</label>
+              <input type="text" className="adm-input" value={window.ENGAGEMENT.provider} disabled />
+            </div>
+            <div className="adm-field">
+              <label>Flat Fee ($)</label>
+              <input type="number" className="adm-input" value={fee}
+                onChange={e => update('fee', Number(e.target.value))} />
+            </div>
+            <div className="adm-field">
+              <label>Success Manager</label>
+              <select className="adm-select" value={sm} onChange={e => update('successManager', e.target.value)}>
+                {window.PEOPLE_LIST.filter(p => p.org === 's360').map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="adm-field">
+              <label>Start Date</label>
+              <input type="text" className="adm-input" value={window.fmtFull(window.ENGAGEMENT_START)} disabled />
+            </div>
+            <div className="adm-field">
+              <label>End Date</label>
+              <input type="text" className="adm-input" value={window.fmtFull(window.ENGAGEMENT_END)} disabled />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<AdminApp />);
+  </script>
+</body>
+</html>

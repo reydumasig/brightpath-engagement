@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "brightpath",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "-l", "4321", "/Users/rdumasig/Documents/Dev/brightpath-engagement"],
+      "port": 4321
+    }
+  ]
+}

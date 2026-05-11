@@ -116,6 +116,7 @@ const Header = ({ tasks, today, focusWs, setFocusWs }) => {
 
 // ── Persistence layer ───────────────────────────────────────────────────────
 const STORAGE_KEY = 'brightpath-engagement-v1';
+const ADMIN_KEY   = 'brightpath-admin-v1';
 
 const loadOverlay = () => {
   try {
@@ -128,18 +129,39 @@ const saveOverlay = (overlay) => {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(overlay)); } catch (e) {}
 };
 
-// Merge overlay into baseline TASKS
-const applyOverlay = (overlay) => window.TASKS.map((t) => {
-  const o = overlay[t.id];
-  if (!o) return { ...t, due: t.due ? new Date(t.due) : null, statusHistory: [] };
-  return {
+const loadAdminData = () => {
+  try { return JSON.parse(localStorage.getItem(ADMIN_KEY) || '{}'); } catch (e) { return {}; }
+};
+
+// Merge admin overrides + user overlay into baseline TASKS
+const applyOverlay = (overlay) => {
+  const admin = loadAdminData();
+  const taskOvr    = admin.taskOverrides || {};
+  const deletedIds = new Set(admin.deletedIds || []);
+  const newTasks   = (admin.newTasks || []).map((t) => ({
     ...t,
     due: t.due ? new Date(t.due) : null,
-    status: o.status || t.status,
-    comments: [...t.comments, ...(o.comments || [])],
-    statusHistory: o.statusHistory || [],
-  };
-});
+    comments: [],
+    statusHistory: [],
+  }));
+
+  return [...window.TASKS, ...newTasks]
+    .filter((t) => !deletedIds.has(t.id))
+    .map((t) => {
+      const ao = taskOvr[t.id] || {};
+      const o  = overlay[t.id] || {};
+      return {
+        ...t,
+        ...ao,
+        due: ao.due ? new Date(ao.due) : (t.due ? new Date(t.due) : null),
+        owner_s360:   ao.owner_s360   || t.owner_s360,
+        owner_client: ao.owner_client || t.owner_client,
+        status:       o.status || ao.status || t.status,
+        comments:     [...(t.comments || []), ...(o.comments || [])],
+        statusHistory: o.statusHistory || [],
+      };
+    });
+};
 
 const WEEKLY_KEY = 'brightpath-weekly-v1';
 const loadWeekly = () => {

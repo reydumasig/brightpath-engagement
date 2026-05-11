@@ -250,6 +250,19 @@ const ENGAGEMENT = {
   type: 'Project-based consulting · 90 days',
 };
 
+// Apply admin overrides (from /admin panel) at load time
+try {
+  const _ao = JSON.parse(localStorage.getItem('brightpath-admin-v1') || '{}');
+  if (_ao.peopleOverrides) {
+    Object.entries(_ao.peopleOverrides).forEach(([id, patch]) => {
+      if (PEOPLE[id]) Object.assign(PEOPLE[id], patch);
+    });
+  }
+  if (_ao.engagementOverrides) {
+    Object.assign(ENGAGEMENT, _ao.engagementOverrides);
+  }
+} catch(e) {}
+
 Object.assign(window, {
   ENGAGEMENT_START, ENGAGEMENT_END, totalDays, ONE_DAY,
   addDays, fmtMon, fmtFull, fmtMD, fmtDow, dayOfEngagement,
