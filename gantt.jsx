@@ -86,11 +86,6 @@ const GanttChart = ({ today, onBarClick }) => {
               <div className="gantt-today-pill">TODAY · {window.fmtMD(today)}</div>
             </div>
           )}
-          {beforeEngagement && (
-            <div className="gantt-today gantt-today-pre" style={{ left: 0 }}>
-              <div className="gantt-today-pill">KICKOFF IN {Math.ceil((window.ENGAGEMENT_START - today) / window.ONE_DAY)} DAYS</div>
-            </div>
-          )}
         </div>
 
         {window.WS_LIST.map((ws) => {
