@@ -52,6 +52,13 @@ const SEC_SYSTEMS = [
     action: 'Enable 2FA on all QBO accounts now. Use dedicated QBO passwords — do not share. Document credentials in password manager.',
   },
   {
+    name: 'DocuSign', category: 'Legal / eSignature',
+    mfa: 'full', sso: 'full', risk: 'critical', priority: 1, rollout: 'phase1',
+    mfaNotes: 'Google Authenticator TOTP supported. Admin can enforce MFA org-wide via DocuSign Admin → Authentication.',
+    ssoNotes: 'Google SAML SSO fully supported. Configure via DocuSign Admin → Identity Providers.',
+    action: 'PRIORITY: Enable MFA enforcement for all senders and admins immediately. DocuSign holds executed contracts and may contain PHI/PII. Set up Google SAML SSO.',
+  },
+  {
     name: 'Notion', category: 'Documentation / Wiki',
     mfa: 'full', sso: 'partial', risk: 'high', priority: 2, rollout: 'phase1',
     mfaNotes: 'TOTP authenticator app supported on all Notion plans.',
@@ -73,6 +80,13 @@ const SEC_SYSTEMS = [
     action: 'Enable MFA for all manager and admin accounts in Phase 1. Validate SSO plan tier before Phase 2.',
   },
   {
+    name: 'Calendly', category: 'Scheduling / Productivity',
+    mfa: 'full', sso: 'partial', risk: 'medium', priority: 3, rollout: 'phase2',
+    mfaNotes: 'Google Authenticator TOTP supported. Users can also sign in via Google OAuth (acts as an implicit 2FA layer if Google 2FA is enforced).',
+    ssoNotes: 'Google OAuth login available on all plans. SAML SSO requires Enterprise plan. Enforcing Google 2FA at the IdP level effectively secures Calendly logins.',
+    action: 'Ensure all users log in via Google OAuth (not email/password). Once Google 2FA is enforced org-wide, Calendly is covered by default.',
+  },
+  {
     name: 'Centrally HR', category: 'HR / Payroll',
     mfa: 'unknown', sso: 'unknown', risk: 'high', priority: 2, rollout: 'validate',
     mfaNotes: 'MFA support not confirmed. Direct vendor validation required this week.',
@@ -85,6 +99,20 @@ const SEC_SYSTEMS = [
     mfaNotes: 'Therap has internal MFA but Google Authenticator TOTP compatibility is unconfirmed. Contains PHI — HIPAA implications.',
     ssoNotes: 'No confirmed Google SAML SSO. Therap manages authentication internally. Validation is a priority.',
     action: 'PRIORITY: Contact Therap support immediately. PHI system — HIPAA-regulated. Confirm: (1) MFA method supported (2) Audit logging active (3) Access review cadence.',
+  },
+  {
+    name: 'BGS (Background Check)', category: 'HR / Compliance',
+    mfa: 'unknown', sso: 'unknown', risk: 'critical', priority: 1, rollout: 'validate',
+    mfaNotes: 'Vendor not yet confirmed (possibly Sterling Backcheck, Checkr, or similar). MFA availability varies by provider and plan. This system handles SSNs, criminal records, and sensitive PII.',
+    ssoNotes: 'Unknown — depends on vendor. Some background check vendors support SAML SSO; others do not.',
+    action: 'PRIORITY: (1) Confirm exact vendor name. (2) Audit who currently has admin/portal access — limit to HR only. (3) Confirm MFA is enabled on all accounts. (4) Verify data retention and deletion policy. Contains highest-sensitivity PII in the stack.',
+  },
+  {
+    name: 'E-Verify / I-9 Platform', category: 'HR / Compliance',
+    mfa: 'partial', sso: 'none', risk: 'critical', priority: 1, rollout: 'validate',
+    mfaNotes: 'USCIS E-Verify portal has built-in MFA (SMS or email code). If using a third-party I-9 system (e.g. HireRight, I-9 Advantage, Equifax I-9), MFA availability depends on that vendor.',
+    ssoNotes: 'USCIS E-Verify is a federal government system — no Google SSO available. Third-party I-9 platforms may offer SSO; confirm with vendor.',
+    action: '(1) Confirm whether BrightPath uses USCIS E-Verify directly or through a third-party I-9 platform. (2) Ensure MFA is active on all employer accounts. (3) Audit user list — federal compliance requires restricted access. (4) If third-party platform: request security documentation.',
   },
   {
     name: 'Star Services LMS', category: 'Learning / Training',
@@ -133,11 +161,15 @@ const SSO_COMPAT = [
   { name: 'Notion',            sso: 'upgrade', protocol: 'SAML 2.0',     notes: 'Business plan required ($15/user/mo).'                                     },
   { name: 'JazzHR',            sso: 'upgrade', protocol: 'SAML 2.0',     notes: 'Plan upgrade likely required. Confirm with vendor.'                        },
   { name: 'When I Work',       sso: 'upgrade', protocol: 'SAML 2.0',     notes: 'Enterprise tier may be required. Validate.'                                },
+  { name: 'DocuSign',          sso: 'yes',     protocol: 'SAML 2.0',     notes: 'Google SAML SSO supported. Configure via DocuSign Admin → Identity Providers.' },
+  { name: 'Calendly',          sso: 'partial', protocol: 'OAuth / SAML', notes: 'Google OAuth on all plans. SAML SSO requires Enterprise plan upgrade.'       },
   { name: 'QuickBooks Online', sso: 'no',      protocol: 'Intuit only',  notes: 'No Google SAML. Intuit SSO only. Enforce 2FA + dedicated credentials.'     },
   { name: 'Centrally HR',      sso: 'unknown', protocol: '?',            notes: 'Vendor validation required.'                                               },
   { name: 'Therap EHR',        sso: 'unknown', protocol: '?',            notes: 'No confirmed SAML. Vendor-managed auth. Priority validation.'              },
-  { name: 'Star Services LMS', sso: 'unknown', protocol: '?',            notes: 'Vendor review required.'                                                   },
-  { name: 'OSMOR',             sso: 'unknown', protocol: '?',            notes: 'Vendor review required.'                                                   },
+  { name: 'Star Services LMS',        sso: 'unknown', protocol: '?',        notes: 'Vendor review required.'                                                   },
+  { name: 'OSMOR',                    sso: 'unknown', protocol: '?',        notes: 'Vendor review required.'                                                   },
+  { name: 'BGS (Background Check)',   sso: 'unknown', protocol: '?',        notes: 'Vendor not confirmed. Review required — contains highly sensitive PII.'    },
+  { name: 'E-Verify / I-9 Platform',  sso: 'no',      protocol: 'Gov only', notes: 'USCIS federal system — no Google SSO. Third-party I-9 platform SSO TBD.' },
 ];
 
 const SSO_ST = {
