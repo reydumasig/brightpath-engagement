@@ -183,7 +183,7 @@ function App() {
   const [weekly, setWeekly] = React.useState(loadWeekly);
   const [expandedIds, setExpandedIds] = React.useState(new Set());
   const [focusWs, setFocusWs] = React.useState(null);
-  const [tab, setTab] = React.useState('roadmap'); // 'roadmap' | 'workplan' | 'weekly'
+  const [tab, setTab] = React.useState('roadmap'); // 'roadmap' | 'workplan' | 'weekly' | 'security'
 
   // Effective today: real today + tweakable demo offset
   const realToday = new Date(2026, 4, 8); // May 8, 2026
@@ -249,6 +249,7 @@ function App() {
     { id: 'roadmap',  label: 'Roadmap',         sub: '90-day Gantt' },
     { id: 'workplan', label: 'Workplan',        sub: `${tasks.length} tasks` },
     { id: 'weekly',   label: 'Weekly Progress', sub: `Week ${currentWeekIdx + 1} of 13` },
+    { id: 'security', label: 'Security Hub',    sub: 'MFA · SSO · Access' },
   ];
 
   return (
@@ -339,6 +340,12 @@ function App() {
             snapshots={weekly}
             setSnapshots={setWeekly}
           />
+        </section>
+      )}
+
+      {tab === 'security' && (
+        <section className="section">
+          <window.SecurityHub />
         </section>
       )}
 
