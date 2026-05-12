@@ -117,12 +117,7 @@ const TASKS = [
   // ── Engagement / Admin ────────────────────────────────────────────────────
   T('eng-1', 'admin', 'SOW countersignature & engagement kickoff',
     '2026-05-11', ['LE'], ['BS'], 'high',
-    { status: 'done',
-      comments: [
-        { who: 'LE', when: '2026-05-07T16:30', text: 'Brandon countersigning Monday AM. Calendar invite for kickoff at 10am CT is out.' },
-        { who: 'BS', when: '2026-05-08T09:12', text: 'Confirmed. Will loop in Stephanie + Jeremy.' },
-        { who: 'LE', when: '2026-05-11T10:30', text: 'Kickoff complete. Brandon, Stephanie, and Jeremy joined. Engagement is live — Week 1 starts now.' },
-      ] }),
+    { status: 'done' }),
   T('eng-2', 'admin', 'Weekly ED 1:1 (recurring, Mondays)',
     null, ['LE'], ['BS'], 'med',
     { recurring: 'Mondays · 30 min', notes: '13 occurrences across engagement' }),
@@ -140,18 +135,11 @@ const TASKS = [
   T('sec-baa', 'sec', 'BAA verification with Google Workspace',
     '2026-04-14', ['RD'], ['JE', 'BS'], 'high',
     { status: 'at_risk',
-      notes: 'Week 1 deliverable — overdue. Verify BAA coverage under Google Workspace for Business Plus as HIPAA-covered entity. Google does provide a BAA under the Data Processing Amendment; needs formal execution and confirmation on file.',
-      comments: [
-        { who: 'RD', when: '2026-05-11T09:00', text: 'BAA not yet confirmed. Escalating — BrightPath operates as a HIPAA-covered entity. Need Jeremy + Brandon to execute GWS Data Processing Amendment.' },
-      ] }),
+      notes: 'Week 1 deliverable — overdue. Verify BAA coverage under Google Workspace for Business Plus as HIPAA-covered entity. Google does provide a BAA under the Data Processing Amendment; needs formal execution and confirmation on file.' }),
   T('sec-1', 'sec', 'Provision Google Workspace super-admin access for S360',
     '2026-05-12', ['RD'], ['JE'], 'high',
     { status: 'done',
-      notes: 'Admin Console access granted Apr 21. S360 delegated admin account active. Current Super Admins (7): Brandon Spears, Rick Joslin, Nicole Buechler, Secellia Riley, Stephanie Noll, Jeremy Garrigan, Michael Sevilla. Reduction to 3 is a separate tracked task.',
-      comments: [
-        { who: 'JE', when: '2026-04-21T11:02', text: 'Delegated admin account created and scoped. Rey has read access to Admin Console, Reports, and User Management.' },
-        { who: 'MS', when: '2026-05-08T09:30', text: 'Confirmed access is live. Began pulling security reports from Admin Console.' },
-      ] }),
+      notes: 'Admin Console access granted Apr 21. S360 delegated admin account active. Current Super Admins (7): Brandon Spears, Rick Joslin, Nicole Buechler, Secellia Riley, Stephanie Noll, Jeremy Garrigan, Michael Sevilla. Reduction to 3 is a separate tracked task.' }),
   T('sec-2', 'sec', 'Security posture assessment (current state)',
     '2026-05-17', ['RD', 'MS'], ['JE', 'LC'], 'high',
     { status: 'in_progress',
@@ -199,10 +187,7 @@ const TASKS = [
 
   // ── MOS ───────────────────────────────────────────────────────────────────
   T('mos-1', 'mos', 'Business-priority brief workshop',
-    '2026-05-27', ['LE'], ['BS', 'SN'], 'high',
-    { comments: [
-      { who: 'LE', when: '2026-05-08T14:20', text: 'Holding 90 min on May 27. Want full leadership team — please confirm Stephanie + Lisa.' },
-    ] }),
+    '2026-05-27', ['LE'], ['BS', 'SN'], 'high'),
   T('mos-2', 'mos', 'Systems & data-flow map (QBO, Zoho, Centrally HR, Therap EHR, Star LMS)',
     '2026-05-29', ['LE', 'RD'], ['SN', 'JPM'], 'high'),
   T('mos-3', 'mos', 'MOS wireframes — initial set (reviewed weekly)',
@@ -235,11 +220,7 @@ const TASKS = [
   // ── Claude ────────────────────────────────────────────────────────────────
   T('cl-1', 'claude', 'Designate 3–5 Claude super users',
     '2026-05-22', ['LE'], ['BS'], 'high',
-    { status: 'in_progress',
-      comments: [
-        { who: 'BS', when: '2026-05-06T10:45', text: 'Thinking Stephanie, JP, Nicole + 1–2 program leads. Will confirm by Friday.' },
-        { who: 'LE', when: '2026-05-07T08:15', text: 'Sounds great — need final list by May 22 so we can pre-provision.' },
-      ] }),
+    { status: 'in_progress' }),
   T('cl-2', 'claude', 'Purchase Claude Enterprise (20 seats, direct via Anthropic)',
     '2026-05-28', ['LE'], ['BS', 'LC'], 'high',
     { notes: '$20/seat/mo + ~$20–40/seat usage. Est. $800–$1,200/mo total.' }),

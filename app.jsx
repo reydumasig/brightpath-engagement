@@ -67,7 +67,42 @@ const WorkstreamCard = ({ ws, tasks, today, onClick, focused }) => {
   );
 };
 
-const Header = ({ tasks, today, focusWs, setFocusWs }) => {
+const UserPicker = ({ currentUser, setCurrentUser }) => {
+  const [open, setOpen] = React.useState(!currentUser);
+  const person = window.PEOPLE[currentUser];
+
+  if (!open && person) {
+    return (
+      <button className="user-picker-btn" onClick={() => setOpen(true)} title="Change who you're posting as">
+        <span className="user-picker-avatar" style={{ background: person.color || '#6366f1' }}>
+          {person.initials}
+        </span>
+        <span className="user-picker-name">{person.name}</span>
+        <span className="user-picker-caret">▾</span>
+      </button>
+    );
+  }
+
+  return (
+    <div className="user-picker-modal">
+      <div className="user-picker-modal-title">Who are you?</div>
+      <div className="user-picker-modal-sub">Your name will appear on comments you post.</div>
+      <div className="user-picker-list">
+        {window.PEOPLE_LIST.map((p) => (
+          <button key={p.id} className="user-picker-option" onClick={() => { setCurrentUser(p.id); setOpen(false); }}>
+            <span className="user-picker-avatar" style={{ background: p.color || '#6366f1' }}>{p.initials}</span>
+            <div>
+              <div className="user-picker-opt-name">{p.name}</div>
+              <div className="user-picker-opt-role">{p.role}</div>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const Header = ({ tasks, today, focusWs, setFocusWs, currentUser, setCurrentUser }) => {
   const totalDays = window.totalDays;
   const dayIn = Math.max(0, Math.min(totalDays, window.dayOfEngagement(today)));
   const daysRemaining = Math.max(0, Math.ceil((window.ENGAGEMENT_END - today) / window.ONE_DAY));
@@ -91,7 +126,9 @@ const Header = ({ tasks, today, focusWs, setFocusWs }) => {
             <span className="hdr-sm"> Success Manager: Lane Elmer</span>
           </div>
         </div>
-        <div className="hdr-stats">
+        <div className="hdr-right">
+          <UserPicker currentUser={currentUser} setCurrentUser={setCurrentUser} />
+          <div className="hdr-stats">
           <StatCard label="Day"
                     value={beforeKickoff ? '—' : `${dayIn} / ${totalDays}`}
                     sub={beforeKickoff ? `Kickoff ${window.fmtMon(window.ENGAGEMENT_START)}` : `${daysRemaining} days remaining`} />
@@ -100,6 +137,7 @@ const Header = ({ tasks, today, focusWs, setFocusWs }) => {
               <div className="stat-progress-fill" style={{ width: `${overallPct}%` }} />
             </div>
           </StatCard>
+          </div>
         </div>
       </div>
 
@@ -117,6 +155,14 @@ const Header = ({ tasks, today, focusWs, setFocusWs }) => {
 // ── Persistence layer ───────────────────────────────────────────────────────
 const STORAGE_KEY = 'brightpath-engagement-v1';
 const ADMIN_KEY   = 'brightpath-admin-v1';
+const USER_KEY    = 'brightpath-user-v1';
+
+const loadCurrentUser = () => {
+  try { return localStorage.getItem(USER_KEY) || ''; } catch (e) { return ''; }
+};
+const saveCurrentUser = (id) => {
+  try { localStorage.setItem(USER_KEY, id); } catch (e) {}
+};
 
 const loadOverlay = () => {
   try {
@@ -181,6 +227,7 @@ function App() {
   const [t, setTweak] = window.useTweaks(TWEAK_DEFAULTS);
   const [overlay, setOverlay] = React.useState(loadOverlay);
   const [weekly, setWeekly] = React.useState(loadWeekly);
+  const [currentUser, setCurrentUser] = React.useState(loadCurrentUser);
   const [expandedIds, setExpandedIds] = React.useState(new Set());
   const [focusWs, setFocusWs] = React.useState(null);
   const [tab, setTab] = React.useState('roadmap'); // 'roadmap' | 'workplan' | 'weekly' | 'security'
@@ -195,6 +242,7 @@ function App() {
 
   React.useEffect(() => { saveOverlay(overlay); }, [overlay]);
   React.useEffect(() => { saveWeekly(weekly); }, [weekly]);
+  React.useEffect(() => { saveCurrentUser(currentUser); }, [currentUser]);
 
   const onToggle = (id) => {
     setExpandedIds((prev) => {
@@ -254,7 +302,8 @@ function App() {
 
   return (
     <div className="app">
-      <Header tasks={tasks} today={today} focusWs={focusWs} setFocusWs={setFocusWs} />
+      <Header tasks={tasks} today={today} focusWs={focusWs} setFocusWs={setFocusWs}
+              currentUser={currentUser} setCurrentUser={setCurrentUser} />
 
       <nav className="tabs">
         {TABS.map((tb) => (
@@ -319,6 +368,8 @@ function App() {
             onUpdate={onUpdate}
             onAddComment={onAddComment}
             focusWs={focusWs}
+            currentUser={currentUser}
+            setCurrentUser={setCurrentUser}
           />
         </section>
       )}

@@ -82,17 +82,21 @@ const DueCell = ({ task, today }) => {
   );
 };
 
-const CommentThread = ({ task, onAddComment }) => {
+const CommentThread = ({ task, onAddComment, currentUser, setCurrentUser }) => {
   const [draft, setDraft] = React.useState('');
-  const [author, setAuthor] = React.useState('LE');
+  const inputRef = React.useRef(null);
+
   const submit = () => {
-    if (!draft.trim()) return;
-    onAddComment(task.id, { who: author, when: new Date().toISOString(), text: draft.trim() });
+    if (!draft.trim() || !currentUser) return;
+    onAddComment(task.id, { who: currentUser, when: new Date().toISOString(), text: draft.trim() });
     setDraft('');
   };
+
+  const me = window.PEOPLE[currentUser];
+
   return (
     <div className="comment-thread">
-      <div className="comment-thread-head">Activity & comments</div>
+      <div className="comment-thread-head">Activity &amp; comments</div>
       {task.comments.length === 0 && <div className="comment-empty">No comments yet.</div>}
       {task.comments.map((c, i) => {
         const p = window.PEOPLE[c.who] || { name: c.who, initials: '?' };
@@ -117,19 +121,32 @@ const CommentThread = ({ task, onAddComment }) => {
         </div>
       )}
       <div className="comment-compose">
-        <select className="comment-author-pick" value={author} onChange={(e) => setAuthor(e.target.value)}>
-          {window.PEOPLE_LIST.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
-        <input className="comment-input" placeholder="Add a comment…"
-               value={draft} onChange={(e) => setDraft(e.target.value)}
-               onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} />
-        <button className="comment-submit" onClick={submit} disabled={!draft.trim()}>Post</button>
+        {me ? (
+          <Avatar pid={currentUser} size={26} />
+        ) : (
+          <span className="comment-compose-anon">?</span>
+        )}
+        <input
+          ref={inputRef}
+          className="comment-input"
+          placeholder={me ? `Comment as ${me.name}…` : 'Select who you are in the header first…'}
+          disabled={!currentUser}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
+        />
+        <button className="comment-submit" onClick={submit} disabled={!draft.trim() || !currentUser}>Post</button>
       </div>
+      {!currentUser && (
+        <div className="comment-no-user">
+          Select your name at the top of the page to post comments.
+        </div>
+      )}
     </div>
   );
 };
 
-const TaskRow = ({ task, today, expanded, onToggle, onUpdate, onAddComment }) => {
+const TaskRow = ({ task, today, expanded, onToggle, onUpdate, onAddComment, currentUser, setCurrentUser }) => {
   const ws = window.WORKSTREAMS[task.ws] || { color: '#475569', short: 'Admin' };
   const wsTag = task.ws === 'admin'
     ? { color: '#475569', tint: '#f1f5f9', short: 'Admin' }
@@ -171,14 +188,14 @@ const TaskRow = ({ task, today, expanded, onToggle, onUpdate, onAddComment }) =>
       </div>
       {expanded && (
         <div className="row-detail">
-          <CommentThread task={task} onAddComment={onAddComment} />
+          <CommentThread task={task} onAddComment={onAddComment} currentUser={currentUser} setCurrentUser={setCurrentUser} />
         </div>
       )}
     </>
   );
 };
 
-const Workplan = ({ tasks, today, grouping, hideCompleted, expandedIds, onToggle, onUpdate, onAddComment, focusWs }) => {
+const Workplan = ({ tasks, today, grouping, hideCompleted, expandedIds, onToggle, onUpdate, onAddComment, focusWs, currentUser, setCurrentUser }) => {
   // Group tasks
   let groups;
   if (grouping === 'workstream') {
@@ -244,6 +261,8 @@ const Workplan = ({ tasks, today, grouping, hideCompleted, expandedIds, onToggle
                 onToggle={() => onToggle(task.id)}
                 onUpdate={onUpdate}
                 onAddComment={onAddComment}
+                currentUser={currentUser}
+                setCurrentUser={setCurrentUser}
               />
             ))}
           </div>
