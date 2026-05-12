@@ -162,7 +162,7 @@ const SSO_COMPAT = [
   { name: 'JazzHR',            sso: 'upgrade', protocol: 'SAML 2.0',     notes: 'Plan upgrade likely required. Confirm with vendor.'                        },
   { name: 'When I Work',       sso: 'upgrade', protocol: 'SAML 2.0',     notes: 'Enterprise tier may be required. Validate.'                                },
   { name: 'DocuSign',          sso: 'yes',     protocol: 'SAML 2.0',     notes: 'Google SAML SSO supported. Configure via DocuSign Admin → Identity Providers.' },
-  { name: 'Calendly',          sso: 'partial', protocol: 'OAuth / SAML', notes: 'Google OAuth on all plans. SAML SSO requires Enterprise plan upgrade.'       },
+  { name: 'Calendly',          sso: 'upgrade', protocol: 'OAuth / SAML', notes: 'Google OAuth on all plans. SAML SSO requires Enterprise plan upgrade.'       },
   { name: 'QuickBooks Online', sso: 'no',      protocol: 'Intuit only',  notes: 'No Google SAML. Intuit SSO only. Enforce 2FA + dedicated credentials.'     },
   { name: 'Centrally HR',      sso: 'unknown', protocol: '?',            notes: 'Vendor validation required.'                                               },
   { name: 'Therap EHR',        sso: 'unknown', protocol: '?',            notes: 'No confirmed SAML. Vendor-managed auth. Priority validation.'              },
