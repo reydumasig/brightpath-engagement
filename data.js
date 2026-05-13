@@ -173,7 +173,7 @@ const TASKS = [
   T('sec-mfa-other', 'sec', 'Majority of other systems — MFA rollout',
     '2026-06-05', ['MS', 'RD'], ['JE'], 'high',
     { status: 'not_started', subgroup: 'mfa',
-      notes: 'For applicable systems. Covers JazzHR, When I Work, Slack, Zoho, QBO, Notion, DocuSign, and others confirmed to support TOTP MFA.' }),
+      notes: 'For applicable systems. Covers JazzHR, When I Work, Zoho, QBO, DocuSign, Adobe Acrobat, Bill.com, Calendly, Indeed, LinkedIn Recruiter, Canva, Squarespace, and others confirmed to support TOTP MFA.' }),
 
   // ── IT Security — SSO ─────────────────────────────────────────────────────
   T('sec-sso-assess', 'sec', 'SSO assessment across systems',
@@ -183,7 +183,7 @@ const TASKS = [
   T('sec-3', 'sec', 'SSO standardization plan across SaaS',
     '2026-05-22', ['RD'], ['LC', 'JE'], 'high',
     { status: 'in_progress', subgroup: 'sso',
-      notes: 'SaaS inventory complete. Tools in scope: QBO, Zoho CRM, Centrally HR, Therap EHR, Star Services LMS, JazzHR (ATS), When I Work (WIW), OSMOR, Slack, Notion, DocuSign, Calendly. Evaluating Google as IdP for SAML/SSO on each. Therap EHR is highest risk — no SSO today.' }),
+      notes: 'SaaS inventory complete. Active tools in scope: QBO, Zoho CRM, Centrally HR, Therap EHR, Star Services LMS, JazzHR (ATS), When I Work, DocuSign, Adobe Acrobat, Bill.com, Alerus, Netstudy 2.0, Zizzl, Calendly, Indeed, LinkedIn Recruiter, Canva, Squarespace, Google Ads. Evaluating Google as IdP for SAML/SSO on each. Therap EHR highest risk — no SSO. Not in scope: AUZMOR (inactive), E-Verify (within Centrally HR, not in use).' }),
   T('sec-sso-rollout', 'sec', 'SSO rollout to all applicable users',
     '2026-05-29', ['MS', 'RD'], ['JE'], 'high',
     { status: 'not_started', subgroup: 'sso',

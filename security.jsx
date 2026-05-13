@@ -20,36 +20,31 @@ const ROLLOUT_ST = {
   phase1:   { label: 'Phase 1 · May 15', bg: '#ede9fe', fg: '#5b21b6' },
   phase2:   { label: 'Phase 2 · May 27', bg: '#dbeafe', fg: '#1d4ed8' },
   validate: { label: 'Validate First',   bg: '#f1f5f9', fg: '#64748b' },
+  inactive: { label: 'Not Active',       bg: '#f8fafc', fg: '#94a3b8' },
 };
 
 const SEC_SYSTEMS = [
+  // ── Critical · Phase 1 ────────────────────────────────────────────────────
   {
     name: 'Google Workspace', category: 'Identity / Productivity',
     mfa: 'full', sso: 'full', risk: 'critical', priority: 1, rollout: 'phase1',
     mfaNotes: 'Native Google Authenticator TOTP. Hardware passkey support. Policy enforcement via Admin Console — set enforcement deadline directly.',
-    ssoNotes: 'Google IS the IdP. All Google apps natively use Google auth.',
+    ssoNotes: 'Google IS the IdP. All Google apps (Gmail, Drive, Docs, Meet, Ads, Calendar) natively use Google auth.',
     action: 'Enforce 2FA via Admin Console → Security → 2-Step Verification. Set enforcement date: May 15.',
-  },
-  {
-    name: 'Slack', category: 'Communication',
-    mfa: 'full', sso: 'full', risk: 'high', priority: 1, rollout: 'phase1',
-    mfaNotes: 'TOTP authenticator app MFA natively supported. Org-wide enforcement available.',
-    ssoNotes: 'Google SAML SSO fully supported on Slack Pro or Business+ plan.',
-    action: 'Enable org-wide MFA in Slack Admin → Authentication. Confirm plan tier supports Google SSO.',
-  },
-  {
-    name: 'Zoho CRM', category: 'CRM / Sales',
-    mfa: 'full', sso: 'full', risk: 'high', priority: 1, rollout: 'phase1',
-    mfaNotes: 'Google Authenticator TOTP fully supported. Admin can enforce org-wide.',
-    ssoNotes: 'Google SAML SSO fully supported via Zoho Directory.',
-    action: 'Enable MFA enforcement in Zoho Admin. Configure Google SAML under Zoho Directory → SSO.',
   },
   {
     name: 'QuickBooks Online', category: 'Finance / Accounting',
     mfa: 'full', sso: 'partial', risk: 'critical', priority: 1, rollout: 'phase1',
     mfaNotes: 'Intuit + Google Authenticator TOTP both supported. MFA can be enforced per account.',
-    ssoNotes: 'Intuit does NOT support Google SAML SSO. Intuit SSO only. Workaround: enforce 2FA + dedicated QBO credentials for all users.',
+    ssoNotes: 'Intuit does NOT support Google SAML SSO. Intuit SSO only. Workaround: enforce 2FA + dedicated QBO credentials.',
     action: 'Enable 2FA on all QBO accounts now. Use dedicated QBO passwords — do not share. Document credentials in password manager.',
+  },
+  {
+    name: 'Bill.com', category: 'Finance / AP-AR',
+    mfa: 'full', sso: 'partial', risk: 'critical', priority: 1, rollout: 'phase1',
+    mfaNotes: 'Google Authenticator TOTP supported. MFA enforcement available in Bill.com admin settings.',
+    ssoNotes: 'SSO available on Business and Enterprise plans. Confirm current plan tier — if on Essentials, upgrade may be needed.',
+    action: 'PRIORITY: Enable MFA on ALL Bill.com accounts immediately. This system has direct payment/banking access. Audit user list — restrict to finance team only.',
   },
   {
     name: 'DocuSign', category: 'Legal / eSignature',
@@ -58,12 +53,35 @@ const SEC_SYSTEMS = [
     ssoNotes: 'Google SAML SSO fully supported. Configure via DocuSign Admin → Identity Providers.',
     action: 'PRIORITY: Enable MFA enforcement for all senders and admins immediately. DocuSign holds executed contracts and may contain PHI/PII. Set up Google SAML SSO.',
   },
+  // ── Critical · Validate First ─────────────────────────────────────────────
   {
-    name: 'Notion', category: 'Documentation / Wiki',
-    mfa: 'full', sso: 'partial', risk: 'high', priority: 2, rollout: 'phase1',
-    mfaNotes: 'TOTP authenticator app supported on all Notion plans.',
-    ssoNotes: 'SAML SSO requires Business plan ($15/user/mo). If on Free or Plus, an upgrade is needed to enable Google SSO.',
-    action: 'Enable MFA for all users immediately. Check current plan — if not on Business tier, evaluate upgrade for SSO.',
+    name: 'Therap EHR', category: 'Healthcare / EHR',
+    mfa: 'partial', sso: 'unknown', risk: 'critical', priority: 1, rollout: 'validate',
+    mfaNotes: 'Therap has internal MFA but Google Authenticator TOTP compatibility is unconfirmed. Contains PHI — HIPAA implications.',
+    ssoNotes: 'No confirmed Google SAML SSO. Therap manages authentication internally. Validation is a priority.',
+    action: 'PRIORITY: Contact Therap support immediately. PHI system — HIPAA-regulated. Confirm: (1) MFA method supported (2) Audit logging active (3) Access review cadence.',
+  },
+  {
+    name: 'Netstudy 2.0', category: 'HR / Background Checks',
+    mfa: 'unknown', sso: 'unknown', risk: 'critical', priority: 1, rollout: 'validate',
+    mfaNotes: 'Netstudy 2.0 MFA capabilities need direct vendor validation. This system processes SSNs, criminal history, and highly sensitive background check PII.',
+    ssoNotes: 'SSO capability unknown. Vendor review required.',
+    action: 'PRIORITY: (1) Contact Netstudy 2.0 support to confirm MFA options. (2) Audit all current portal access — restrict to HR-authorized personnel only. (3) Confirm data retention and deletion policy. Highest-sensitivity PII in the stack.',
+  },
+  {
+    name: 'Alerus', category: 'Finance / Payroll & Benefits',
+    mfa: 'unknown', sso: 'unknown', risk: 'critical', priority: 1, rollout: 'validate',
+    mfaNotes: 'Alerus MFA capabilities need vendor validation. As a financial services platform handling payroll and 401(k) data, MFA is critical.',
+    ssoNotes: 'SSO support unknown. Contact Alerus account manager or support.',
+    action: 'PRIORITY: Contact Alerus support to confirm MFA options. Audit who has payroll/plan admin access. Restrict to authorized personnel only — financial and retirement data.',
+  },
+  // ── High · Phase 1 ───────────────────────────────────────────────────────
+  {
+    name: 'Zoho CRM', category: 'CRM / Sales',
+    mfa: 'full', sso: 'full', risk: 'high', priority: 1, rollout: 'phase1',
+    mfaNotes: 'Google Authenticator TOTP fully supported. Admin can enforce org-wide.',
+    ssoNotes: 'Google SAML SSO fully supported via Zoho Directory.',
+    action: 'Enable MFA enforcement in Zoho Admin. Configure Google SAML under Zoho Directory → SSO.',
   },
   {
     name: 'JazzHR (ATS)', category: 'HR / Recruiting',
@@ -73,46 +91,48 @@ const SEC_SYSTEMS = [
     action: 'Contact JazzHR support to confirm: (1) Does current plan include MFA? (2) Is SAML SSO available? Escalate if MFA is not included.',
   },
   {
+    name: 'Adobe Acrobat', category: 'Productivity / Documents',
+    mfa: 'full', sso: 'full', risk: 'high', priority: 2, rollout: 'phase1',
+    mfaNotes: 'Adobe Account supports TOTP authenticator app MFA. Org-wide MFA enforcement available via Adobe Admin Console.',
+    ssoNotes: 'Adobe Enterprise/Teams supports SAML 2.0 SSO. Configure Google as IdP via Adobe Admin Console → Identity.',
+    action: 'Enable MFA enforcement in Adobe Admin Console. If on Teams or Enterprise plan, configure Google SAML SSO. Audit who has access to shared document libraries.',
+  },
+  {
+    name: 'Google Ads', category: 'Marketing / Advertising',
+    mfa: 'full', sso: 'native', risk: 'high', priority: 1, rollout: 'phase1',
+    mfaNotes: 'Uses Google Account authentication — automatically covered when GWS 2FA is enforced org-wide. No additional configuration needed.',
+    ssoNotes: 'Native Google auth — covered by GWS identity enforcement.',
+    action: 'Covered by GWS 2FA enforcement on May 15. Audit who has Manager/Admin access in the Google Ads account. Remove any former employee access immediately.',
+  },
+  // ── High · Phase 2 ────────────────────────────────────────────────────────
+  {
+    name: 'LinkedIn Recruiter', category: 'HR / Recruiting',
+    mfa: 'full', sso: 'no', risk: 'high', priority: 2, rollout: 'phase2',
+    mfaNotes: 'LinkedIn natively supports TOTP authenticator app MFA. Enable per account in LinkedIn Settings → Security.',
+    ssoNotes: 'LinkedIn uses its own authentication system. No Google SAML SSO support. Best practice: enforce 2FA + dedicated work credentials.',
+    action: 'Enable 2FA on all LinkedIn Recruiter accounts. Use work email addresses only (not personal). Document credentials in password manager.',
+  },
+  {
     name: 'When I Work', category: 'Scheduling / Workforce',
     mfa: 'full', sso: 'partial', risk: 'high', priority: 2, rollout: 'phase2',
     mfaNotes: 'TOTP authenticator app MFA supported natively.',
     ssoNotes: 'SSO may require enterprise tier. Validate current plan with vendor.',
     action: 'Enable MFA for all manager and admin accounts in Phase 1. Validate SSO plan tier before Phase 2.',
   },
-  {
-    name: 'Calendly', category: 'Scheduling / Productivity',
-    mfa: 'full', sso: 'partial', risk: 'medium', priority: 3, rollout: 'phase2',
-    mfaNotes: 'Google Authenticator TOTP supported. Users can also sign in via Google OAuth (acts as an implicit 2FA layer if Google 2FA is enforced).',
-    ssoNotes: 'Google OAuth login available on all plans. SAML SSO requires Enterprise plan. Enforcing Google 2FA at the IdP level effectively secures Calendly logins.',
-    action: 'Ensure all users log in via Google OAuth (not email/password). Once Google 2FA is enforced org-wide, Calendly is covered by default.',
-  },
+  // ── High · Validate ────────────────────────────────────────────────────────
   {
     name: 'Centrally HR', category: 'HR / Payroll',
     mfa: 'unknown', sso: 'unknown', risk: 'high', priority: 2, rollout: 'validate',
-    mfaNotes: 'MFA support not confirmed. Direct vendor validation required this week.',
+    mfaNotes: 'MFA support not confirmed. Direct vendor validation required. Note: E-Verify is embedded within Centrally HR but is not currently in active use.',
     ssoNotes: 'SSO capability unknown. Contact vendor.',
-    action: 'Contact Centrally HR support this week: (1) Is TOTP MFA available? (2) Is SAML SSO supported? (3) What plan tier is required? Report back before Phase 2.',
+    action: 'Contact Centrally HR support this week: (1) Is TOTP MFA available? (2) Is SAML SSO supported? (3) What plan tier is required? (4) Confirm E-Verify module status. Report back before Phase 2.',
   },
   {
-    name: 'Therap EHR', category: 'Healthcare / EHR',
-    mfa: 'partial', sso: 'unknown', risk: 'critical', priority: 1, rollout: 'validate',
-    mfaNotes: 'Therap has internal MFA but Google Authenticator TOTP compatibility is unconfirmed. Contains PHI — HIPAA implications.',
-    ssoNotes: 'No confirmed Google SAML SSO. Therap manages authentication internally. Validation is a priority.',
-    action: 'PRIORITY: Contact Therap support immediately. PHI system — HIPAA-regulated. Confirm: (1) MFA method supported (2) Audit logging active (3) Access review cadence.',
-  },
-  {
-    name: 'BGS (Background Check)', category: 'HR / Compliance',
-    mfa: 'unknown', sso: 'unknown', risk: 'critical', priority: 1, rollout: 'validate',
-    mfaNotes: 'Vendor not yet confirmed (possibly Sterling Backcheck, Checkr, or similar). MFA availability varies by provider and plan. This system handles SSNs, criminal records, and sensitive PII.',
-    ssoNotes: 'Unknown — depends on vendor. Some background check vendors support SAML SSO; others do not.',
-    action: 'PRIORITY: (1) Confirm exact vendor name. (2) Audit who currently has admin/portal access — limit to HR only. (3) Confirm MFA is enabled on all accounts. (4) Verify data retention and deletion policy. Contains highest-sensitivity PII in the stack.',
-  },
-  {
-    name: 'E-Verify / I-9 Platform', category: 'HR / Compliance',
-    mfa: 'partial', sso: 'none', risk: 'critical', priority: 1, rollout: 'validate',
-    mfaNotes: 'USCIS E-Verify portal has built-in MFA (SMS or email code). If using a third-party I-9 system (e.g. HireRight, I-9 Advantage, Equifax I-9), MFA availability depends on that vendor.',
-    ssoNotes: 'USCIS E-Verify is a federal government system — no Google SSO available. Third-party I-9 platforms may offer SSO; confirm with vendor.',
-    action: '(1) Confirm whether BrightPath uses USCIS E-Verify directly or through a third-party I-9 platform. (2) Ensure MFA is active on all employer accounts. (3) Audit user list — federal compliance requires restricted access. (4) If third-party platform: request security documentation.',
+    name: 'Zizzl', category: 'HR / Benefits',
+    mfa: 'unknown', sso: 'unknown', risk: 'high', priority: 2, rollout: 'validate',
+    mfaNotes: 'Zizzl MFA capabilities need vendor validation. Platform handles employee benefits enrollment and PII.',
+    ssoNotes: 'SSO support unknown. Vendor review required.',
+    action: 'Contact Zizzl support to confirm: (1) Is TOTP MFA available? (2) Is SAML SSO supported? Report back before Phase 2 rollout.',
   },
   {
     name: 'Star Services LMS', category: 'Learning / Training',
@@ -121,12 +141,43 @@ const SEC_SYSTEMS = [
     ssoNotes: 'Unknown. Vendor review required.',
     action: 'Contact Star Services for authentication and security documentation.',
   },
+  // ── Medium · Phase 2 ──────────────────────────────────────────────────────
   {
-    name: 'OSMOR', category: 'Operations',
-    mfa: 'unknown', sso: 'unknown', risk: 'high', priority: 3, rollout: 'validate',
-    mfaNotes: 'Vendor validation required.',
-    ssoNotes: 'Unknown.',
-    action: 'Contact OSMOR vendor for security documentation before Phase 2.',
+    name: 'Calendly', category: 'Scheduling / Productivity',
+    mfa: 'full', sso: 'partial', risk: 'medium', priority: 3, rollout: 'phase2',
+    mfaNotes: 'Google Authenticator TOTP supported. Users can also sign in via Google OAuth (acts as an implicit 2FA layer if Google 2FA is enforced).',
+    ssoNotes: 'Google OAuth login available on all plans. SAML SSO requires Enterprise plan. Enforcing Google 2FA at the IdP level effectively secures Calendly logins.',
+    action: 'Ensure all users log in via Google OAuth (not email/password). Once Google 2FA is enforced org-wide, Calendly is covered by default.',
+  },
+  {
+    name: 'Indeed', category: 'HR / Recruiting',
+    mfa: 'full', sso: 'partial', risk: 'medium', priority: 3, rollout: 'phase2',
+    mfaNotes: 'Google Authenticator TOTP supported. MFA can be enabled per account in Indeed account settings.',
+    ssoNotes: 'Indeed supports Google Sign-In on most plans. Full SAML SSO is not available — Google OAuth is the strongest SSO option available.',
+    action: 'Enable MFA on all recruiter and admin accounts. Ensure accounts use Google Sign-In rather than email/password where available.',
+  },
+  {
+    name: 'Squarespace', category: 'Marketing / Website',
+    mfa: 'full', sso: 'partial', risk: 'medium', priority: 3, rollout: 'phase2',
+    mfaNotes: 'Authenticator app TOTP supported on all Squarespace plans.',
+    ssoNotes: 'Google account sign-in available. No SAML SSO. Enforce 2FA on all contributor accounts.',
+    action: 'Enable 2FA on all admin/contributor accounts. Use Google login where available. Limit admin access to essential staff only.',
+  },
+  {
+    name: 'Canva', category: 'Design / Marketing',
+    mfa: 'full', sso: 'full', risk: 'low', priority: 3, rollout: 'phase2',
+    mfaNotes: 'TOTP authenticator app supported. Google account sign-in available on all plans.',
+    ssoNotes: 'Google OAuth on all plans. SAML SSO available on Canva for Teams and Enterprise plans.',
+    action: 'Ensure all users sign in via Google account (not email/password). Enable Google SAML SSO if on Teams plan.',
+  },
+  // ── Inactive / Future ─────────────────────────────────────────────────────
+  {
+    name: 'AUZMOR (OSMOR)', category: 'Learning / Operations',
+    mfa: 'unknown', sso: 'unknown', risk: 'medium', priority: 4, rollout: 'inactive',
+    inactive: true,
+    mfaNotes: 'Not currently in active use. MFA and SSO capabilities TBD if/when platform is activated.',
+    ssoNotes: 'Not applicable — platform not currently in use.',
+    action: 'No action needed now. If BrightPath activates AUZMOR in the future, conduct full MFA/SSO review at that time.',
   },
 ];
 
@@ -134,8 +185,8 @@ const SSO_PROVIDERS = [
   {
     name: 'Google Workspace', recommended: true,
     cost: 'Already paying (~$12–18/user/mo)',
-    pros: ['Already in use at BrightPath', 'Supports SAML 2.0 + OAuth', 'Admin Console policy enforcement', 'No extra cost', 'Works with Slack, Zoho, Notion, and more'],
-    cons: ['Not all vendors support Google SAML (e.g. QBO, Therap)', 'Requires Business Starter or higher'],
+    pros: ['Already in use at BrightPath', 'Supports SAML 2.0 + OAuth', 'Admin Console policy enforcement', 'No extra cost', 'Works with Zoho, DocuSign, Adobe, Canva, and more'],
+    cons: ['Not all vendors support Google SAML (e.g. QBO, LinkedIn, Therap)', 'Requires Business Starter or higher'],
     verdict: 'Start here. Google is already your identity anchor — enforce SSO on every system that supports it before evaluating other tools.',
   },
   {
@@ -155,21 +206,31 @@ const SSO_PROVIDERS = [
 ];
 
 const SSO_COMPAT = [
-  { name: 'Google Workspace',  sso: 'native',  protocol: 'Native',       notes: 'Google is the IdP — native auth.'                                          },
-  { name: 'Slack',             sso: 'yes',     protocol: 'SAML 2.0',     notes: 'Pro or Business+ plan required.'                                           },
-  { name: 'Zoho CRM',          sso: 'yes',     protocol: 'SAML 2.0',     notes: 'Configure via Zoho Directory. No extra cost.'                              },
-  { name: 'Notion',            sso: 'upgrade', protocol: 'SAML 2.0',     notes: 'Business plan required ($15/user/mo).'                                     },
-  { name: 'JazzHR',            sso: 'upgrade', protocol: 'SAML 2.0',     notes: 'Plan upgrade likely required. Confirm with vendor.'                        },
-  { name: 'When I Work',       sso: 'upgrade', protocol: 'SAML 2.0',     notes: 'Enterprise tier may be required. Validate.'                                },
-  { name: 'DocuSign',          sso: 'yes',     protocol: 'SAML 2.0',     notes: 'Google SAML SSO supported. Configure via DocuSign Admin → Identity Providers.' },
-  { name: 'Calendly',          sso: 'upgrade', protocol: 'OAuth / SAML', notes: 'Google OAuth on all plans. SAML SSO requires Enterprise plan upgrade.'       },
-  { name: 'QuickBooks Online', sso: 'no',      protocol: 'Intuit only',  notes: 'No Google SAML. Intuit SSO only. Enforce 2FA + dedicated credentials.'     },
-  { name: 'Centrally HR',      sso: 'unknown', protocol: '?',            notes: 'Vendor validation required.'                                               },
-  { name: 'Therap EHR',        sso: 'unknown', protocol: '?',            notes: 'No confirmed SAML. Vendor-managed auth. Priority validation.'              },
-  { name: 'Star Services LMS',        sso: 'unknown', protocol: '?',        notes: 'Vendor review required.'                                                   },
-  { name: 'OSMOR',                    sso: 'unknown', protocol: '?',        notes: 'Vendor review required.'                                                   },
-  { name: 'BGS (Background Check)',   sso: 'unknown', protocol: '?',        notes: 'Vendor not confirmed. Review required — contains highly sensitive PII.'    },
-  { name: 'E-Verify / I-9 Platform',  sso: 'no',      protocol: 'Gov only', notes: 'USCIS federal system — no Google SSO. Third-party I-9 platform SSO TBD.' },
+  // ── Native / Covered by Google ──────────────────────────────────────────
+  { name: 'Google Workspace',  sso: 'native',  protocol: 'Native',        notes: 'Google is the IdP — Gmail, Drive, Docs, Meet, Ads all covered by GWS auth.' },
+  { name: 'Google Ads',        sso: 'native',  protocol: 'Native',        notes: 'Google Account — covered by GWS 2FA enforcement. No extra config needed.'    },
+  // ── Full SAML SSO Supported ────────────────────────────────────────────
+  { name: 'Zoho CRM',          sso: 'yes',     protocol: 'SAML 2.0',      notes: 'Configure via Zoho Directory. No extra cost.'                               },
+  { name: 'DocuSign',          sso: 'yes',     protocol: 'SAML 2.0',      notes: 'Google SAML SSO supported. Configure via DocuSign Admin → Identity Providers.' },
+  { name: 'Adobe Acrobat',     sso: 'yes',     protocol: 'SAML 2.0',      notes: 'Google SAML via Adobe Admin Console. Teams or Enterprise plan required.'    },
+  { name: 'Canva',             sso: 'yes',     protocol: 'OAuth / SAML',   notes: 'Google OAuth on all plans. SAML SSO on Teams/Enterprise plans.'             },
+  // ── Upgrade Required ──────────────────────────────────────────────────
+  { name: 'JazzHR',            sso: 'upgrade', protocol: 'SAML 2.0',      notes: 'Plan upgrade likely required. Confirm with vendor.'                         },
+  { name: 'When I Work',       sso: 'upgrade', protocol: 'SAML 2.0',      notes: 'Enterprise tier may be required. Validate.'                                 },
+  { name: 'Calendly',          sso: 'upgrade', protocol: 'OAuth / SAML',   notes: 'Google OAuth on all plans. SAML SSO requires Enterprise plan upgrade.'      },
+  { name: 'Indeed',            sso: 'upgrade', protocol: 'OAuth',          notes: 'Google Sign-In available. Full SAML SSO not supported — OAuth is best available option.' },
+  { name: 'Squarespace',       sso: 'upgrade', protocol: 'OAuth',          notes: 'Google account sign-in available. No SAML SSO support.'                    },
+  { name: 'Bill.com',          sso: 'upgrade', protocol: 'SAML 2.0',       notes: 'SSO on Business/Enterprise plans. Confirm current plan tier.'              },
+  // ── Not Available (Dedicated Credentials Required) ────────────────────
+  { name: 'QuickBooks Online', sso: 'no',      protocol: 'Intuit only',    notes: 'No Google SAML. Intuit SSO only. Enforce 2FA + dedicated credentials.'     },
+  { name: 'LinkedIn Recruiter',sso: 'no',      protocol: 'LinkedIn only',  notes: 'LinkedIn manages own auth. No Google SAML SSO. Enforce 2FA + work email.' },
+  // ── Needs Validation ──────────────────────────────────────────────────
+  { name: 'Centrally HR',      sso: 'unknown', protocol: '?',              notes: 'Vendor validation required. E-Verify is embedded but not currently in use.' },
+  { name: 'Therap EHR',        sso: 'unknown', protocol: '?',              notes: 'No confirmed SAML. Vendor-managed auth. Priority validation.'               },
+  { name: 'Netstudy 2.0',      sso: 'unknown', protocol: '?',              notes: 'Vendor validation required — handles highest-sensitivity PII in the stack.' },
+  { name: 'Alerus',            sso: 'unknown', protocol: '?',              notes: 'Financial services platform — vendor validation required.'                  },
+  { name: 'Zizzl',             sso: 'unknown', protocol: '?',              notes: 'Benefits platform — vendor validation required.'                            },
+  { name: 'Star Services LMS', sso: 'unknown', protocol: '?',              notes: 'Vendor review required.'                                                    },
 ];
 
 const SSO_ST = {
@@ -183,8 +244,8 @@ const SSO_ST = {
 const ONBOARDING_STEPS = [
   { step: 1, title: 'Create Google Workspace account',     owner: 'IT/Admin', detail: 'Admin Console → Users → Add User. Assign to correct OU (Leadership / Corporate / Direct Care / Contractor). Set temp password with forced reset on first login.' },
   { step: 2, title: 'Enroll in 2FA immediately',           owner: 'Employee', detail: 'Employee downloads Google Authenticator. Admin can enforce 2FA enrollment period (7 days) before access is granted.' },
-  { step: 3, title: 'Provision SaaS app access via SSO',   owner: 'IT/Admin', detail: 'For Google SSO-enabled apps (Slack, Zoho, Notion): no separate account creation needed — employee signs in with Google. For non-SSO apps (QBO, Therap): create dedicated account and store in password manager.' },
-  { step: 4, title: 'Assign role-based permissions',       owner: 'Manager + IT', detail: 'Confirm correct OU in Google Admin (controls app restrictions and policy). Assign CRM role in Zoho. Assign schedule in When I Work. Assign LMS courses in Star LMS.' },
+  { step: 3, title: 'Provision SaaS app access via SSO',   owner: 'IT/Admin', detail: 'For Google SSO-enabled apps (Zoho CRM, DocuSign, Adobe, Canva): no separate account creation needed — employee signs in with Google. For non-SSO apps (QBO, Therap, LinkedIn): create dedicated account and store in password manager.' },
+  { step: 4, title: 'Assign role-based permissions',       owner: 'Manager + IT', detail: 'Confirm correct OU in Google Admin (controls app restrictions and policy). Assign CRM role in Zoho. Assign schedule in When I Work. Assign LMS courses in Star LMS. Provision Adobe Acrobat and DocuSign as needed by role.' },
   { step: 5, title: 'Send credential brief to employee',   owner: 'IT/Admin', detail: 'Share password manager vault entry (if applicable) via secure channel — NOT email. Provide Google account login link and 2FA setup guide.' },
   { step: 6, title: 'Log onboarding in access registry',   owner: 'IT/Admin', detail: 'Record: employee name, date, OU, apps provisioned, 2FA enrolled (Y/N), approving manager. Retain for audit purposes.' },
 ];
@@ -194,13 +255,13 @@ const OFFBOARDING_STEPS = [
   { step: 2, title: 'Revoke non-SSO app access',           owner: 'IT/Admin', time: 'Same day', urgent: true,  detail: 'Manually revoke access in: QBO, Therap EHR, Centrally HR, JazzHR, any apps not using Google SSO. Check shared account use.' },
   { step: 3, title: 'Transfer owned files and data',       owner: 'Manager',  time: '24–48 hrs', urgent: false, detail: 'Google Admin → Data Transfer. Transfer Google Drive ownership to manager or shared drive. Archive Google Calendar.' },
   { step: 4, title: 'Rotate any shared credentials',       owner: 'IT/Admin', time: '24 hrs',   urgent: true,  detail: 'If employee had access to any shared logins (vendor portals, admin accounts), rotate those passwords immediately.' },
-  { step: 5, title: 'Remove from Slack, Notion, When I Work', owner: 'IT/Admin', time: '24 hrs', urgent: false, detail: 'Deactivate in each SaaS tool. For SSO-enabled tools, Google suspension handles session revocation — but confirm app-level deactivation for compliance.' },
+  { step: 5, title: 'Deactivate in SaaS tools',            owner: 'IT/Admin', time: '24 hrs', urgent: false, detail: 'Deactivate in: When I Work, LinkedIn Recruiter, JazzHR, Indeed, Canva, DocuSign, Adobe Acrobat, Bill.com, and any other role-specific tools. For Google SSO-enabled tools, GWS suspension handles session revocation — but confirm app-level deactivation for compliance and audit.' },
   { step: 6, title: 'Delete Google account after 30 days', owner: 'IT/Admin', time: '30 days',  urgent: false, detail: 'After data transfer is confirmed: Admin Console → Users → Delete. Document deletion date for audit log.' },
 ];
 
 const RBAC_ROLES = [
   { role: 'Super Admin',      count: '3 (target)',  google: 'Super Admin OU',        apps: 'All systems, all settings',       example: 'Brandon Spears, Jeremy Garrigan, + 1 designated IT lead' },
-  { role: 'IT / Admin',       count: '2–3',         google: 'Corporate OU',          apps: 'Admin Console (delegated), Slack admin, Zoho admin',  example: 'S360 team members during engagement' },
+  { role: 'IT / Admin',       count: '2–3',         google: 'Corporate OU',          apps: 'Admin Console (delegated), Zoho admin, Adobe admin',  example: 'S360 team members during engagement' },
   { role: 'Leadership',       count: '~8–10',       google: 'Leadership OU',         apps: 'All SaaS read + write, QBO view, Therap admin',       example: 'Brandon, Stephanie, Lisa, Rick J., Nicole, Secellia' },
   { role: 'Operations / HR',  count: '~15–20',      google: 'Corporate OU',          apps: 'Zoho CRM, Centrally HR, JazzHR, When I Work',         example: 'Operations managers, HR staff' },
   { role: 'Direct Care Staff',count: '~150+',       google: 'Direct Care OU',        apps: 'Therap EHR, Star LMS, When I Work, Gmail only',       example: 'DSPs, program staff' },
@@ -253,16 +314,16 @@ const MFAHeatmap = () => {
   const [expanded, setExpanded] = React.useState(null);
   const [guideOpen, setGuideOpen] = React.useState(false);
 
-  const full = SEC_SYSTEMS.filter((s) => s.mfa === 'full').length;
-  const partial = SEC_SYSTEMS.filter((s) => s.mfa === 'partial').length;
-  const unknown = SEC_SYSTEMS.filter((s) => s.mfa === 'unknown').length;
-  const critical = SEC_SYSTEMS.filter((s) => s.risk === 'critical').length;
+  const active = SEC_SYSTEMS.filter((s) => !s.inactive);
+  const full = active.filter((s) => s.mfa === 'full').length;
+  const unknown = active.filter((s) => s.mfa === 'unknown').length;
+  const critical = active.filter((s) => s.risk === 'critical').length;
 
   return (
     <div className="sec-section">
       {/* Summary cards */}
       <div className="sec-stats-row">
-        <SecCard title="Systems Reviewed" value={SEC_SYSTEMS.length} sub="Full inventory" accent="#6366f1" />
+        <SecCard title="Systems Reviewed" value={active.length} sub="Active systems" accent="#6366f1" />
         <SecCard title="Full MFA Support" value={full} sub="Ready to enforce" accent="#10b981" />
         <SecCard title="Needs Validation" value={unknown} sub="Vendor contact required" accent="#94a3b8" />
         <SecCard title="Critical Risk" value={critical} sub="Immediate action needed" accent="#ef4444" />
@@ -317,7 +378,7 @@ const MFAHeatmap = () => {
               {SEC_SYSTEMS.map((s) => (
                 <React.Fragment key={s.name}>
                   <tr
-                    className={`sec-hm-row ${expanded === s.name ? 'sec-hm-row-open' : ''}`}
+                    className={`sec-hm-row ${expanded === s.name ? 'sec-hm-row-open' : ''} ${s.inactive ? 'sec-hm-row-inactive' : ''}`}
                     onClick={() => setExpanded(expanded === s.name ? null : s.name)}>
                     <td className="sec-hm-system-cell">
                       <span className="sec-hm-name">{s.name}</span>
@@ -392,11 +453,13 @@ const MFAHeatmap = () => {
               <div className="sec-tl-desc">Enforce 2FA on all 7 Super Admin accounts and all Leadership/Corporate users (~40 accounts). Google Admin Console enforcement deadline set to May 15. After this date, accounts without 2FA enrolled are blocked from signing in.</div>
               <div className="sec-tl-targets">
                 <span className="sec-tl-tag">Google Workspace</span>
-                <span className="sec-tl-tag">Slack</span>
                 <span className="sec-tl-tag">Zoho CRM</span>
                 <span className="sec-tl-tag">QuickBooks Online</span>
+                <span className="sec-tl-tag">Bill.com</span>
+                <span className="sec-tl-tag">DocuSign</span>
+                <span className="sec-tl-tag">Adobe Acrobat</span>
                 <span className="sec-tl-tag">JazzHR</span>
-                <span className="sec-tl-tag">Notion</span>
+                <span className="sec-tl-tag">Google Ads</span>
               </div>
               <div className="sec-tl-users">
                 <strong>Target users:</strong> Leadership, HR, Operations, IT/Admin accounts (all 7 current Super Admins included)
@@ -451,12 +514,14 @@ const MFAHeatmap = () => {
             <div className="sec-tl-content">
               <div className="sec-tl-phase">Vendor Validation — Parallel Track</div>
               <div className="sec-tl-date">Ongoing through May 31</div>
-              <div className="sec-tl-desc">Contact Centrally HR, Therap EHR, Star LMS, and OSMOR to confirm MFA and SSO capabilities. Results determine final rollout scope and whether any systems need compensating controls.</div>
+              <div className="sec-tl-desc">Contact Centrally HR, Therap EHR, Star LMS, Netstudy 2.0, Alerus, and Zizzl to confirm MFA and SSO capabilities. Results determine final rollout scope and whether any systems need compensating controls.</div>
               <div className="sec-tl-targets">
                 <span className="sec-tl-tag sec-tl-tag-gray">Centrally HR</span>
                 <span className="sec-tl-tag sec-tl-tag-gray">Therap EHR</span>
                 <span className="sec-tl-tag sec-tl-tag-gray">Star LMS</span>
-                <span className="sec-tl-tag sec-tl-tag-gray">OSMOR</span>
+                <span className="sec-tl-tag sec-tl-tag-gray">Netstudy 2.0</span>
+                <span className="sec-tl-tag sec-tl-tag-gray">Alerus</span>
+                <span className="sec-tl-tag sec-tl-tag-gray">Zizzl</span>
               </div>
             </div>
           </div>
