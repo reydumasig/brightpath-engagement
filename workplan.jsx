@@ -240,10 +240,58 @@ const Workplan = ({ tasks, today, grouping, hideCompleted, expandedIds, onToggle
         <div className="cell-h cell-due">Due</div>
       </div>
       {groups.map((g) => {
-        let rows = g.tasks;
-        if (hideCompleted) rows = rows.filter((t) => t.status !== 'done');
-        if (rows.length === 0) return null;
+        let allRows = g.tasks;
+        if (hideCompleted) allRows = allRows.filter((t) => t.status !== 'done');
+        if (allRows.length === 0) return null;
         const doneCount = g.tasks.filter((t) => t.status === 'done').length;
+
+        // ── IT Security: render with sub-group headers ──
+        if (g.key === 'sec') {
+          const noSubgroup = allRows.filter((t) => !t.subgroup);
+          // Track which "Access Mgmt / Security" parent header has been shown
+          const shownParents = new Set();
+          return (
+            <div key={g.key} className="group" style={{ '--g-color': g.meta.color }}>
+              <div className="group-head">
+                <span className="group-bar" style={{ background: g.meta.color }} />
+                <span className="group-label">{g.label}</span>
+                <span className="group-count">{doneCount}/{g.tasks.length} done</span>
+              </div>
+              {noSubgroup.map((task) => (
+                <TaskRow key={task.id} task={task} today={today}
+                  expanded={expandedIds.has(task.id)} onToggle={() => onToggle(task.id)}
+                  onUpdate={onUpdate} onAddComment={onAddComment}
+                  currentUser={currentUser} setCurrentUser={setCurrentUser} />
+              ))}
+              {window.SEC_SUBGROUPS.map((sg) => {
+                const sgRows = allRows.filter((t) => t.subgroup === sg.id);
+                if (sgRows.length === 0) return null;
+                const parentHeader = sg.parent && !shownParents.has(sg.parent) ? (() => { shownParents.add(sg.parent); return sg.parent; })() : null;
+                return (
+                  <React.Fragment key={sg.id}>
+                    {parentHeader && (
+                      <div className="subgroup-parent-head" style={{ '--g-color': g.meta.color }}>
+                        <span className="subgroup-parent-label">{parentHeader}</span>
+                      </div>
+                    )}
+                    <div className="subgroup-head" style={{ '--g-color': g.meta.color, paddingLeft: sg.parent ? '32px' : '16px' }}>
+                      <span className="subgroup-label">{sg.label}</span>
+                      <span className="subgroup-count">{sgRows.filter((t) => t.status === 'done').length}/{sgRows.length}</span>
+                    </div>
+                    {sgRows.map((task) => (
+                      <TaskRow key={task.id} task={task} today={today}
+                        expanded={expandedIds.has(task.id)} onToggle={() => onToggle(task.id)}
+                        onUpdate={onUpdate} onAddComment={onAddComment}
+                        currentUser={currentUser} setCurrentUser={setCurrentUser} />
+                    ))}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          );
+        }
+
+        // ── Default: flat task list ──
         return (
           <div key={g.key} className="group" style={{ '--g-color': g.meta.color }}>
             <div className="group-head">
@@ -252,18 +300,11 @@ const Workplan = ({ tasks, today, grouping, hideCompleted, expandedIds, onToggle
               {g.sub && <span className="group-sub">{g.sub}</span>}
               <span className="group-count">{doneCount}/{g.tasks.length} done</span>
             </div>
-            {rows.map((task) => (
-              <TaskRow
-                key={task.id}
-                task={task}
-                today={today}
-                expanded={expandedIds.has(task.id)}
-                onToggle={() => onToggle(task.id)}
-                onUpdate={onUpdate}
-                onAddComment={onAddComment}
-                currentUser={currentUser}
-                setCurrentUser={setCurrentUser}
-              />
+            {allRows.map((task) => (
+              <TaskRow key={task.id} task={task} today={today}
+                expanded={expandedIds.has(task.id)} onToggle={() => onToggle(task.id)}
+                onUpdate={onUpdate} onAddComment={onAddComment}
+                currentUser={currentUser} setCurrentUser={setCurrentUser} />
             ))}
           </div>
         );
