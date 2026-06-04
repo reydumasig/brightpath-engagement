@@ -1,5 +1,16 @@
 // security.jsx — Security Hub: MFA Heatmap, SSO Strategy, Access Management
 
+// ── Google Workspace live stats ───────────────────────────────────────────────
+// HYBRID: hardcoded now — replace with fetch() from Apps Script URL when CORS is open.
+// Source: https://script.google.com/a/macros/brightpath-mn.com/s/AKfycbwUK1-hgH5VCAhGVLvdyw_p7a--T2NmZtfonZtmtDTkKc4J6GBaCXnx3Tehmb0HK6cr/exec
+const GW_STATS = {
+  activeAccounts: 220,
+  twoFAEnabled:   41,
+  noTwoFA:        179,
+  coverage:       19,      // percent
+  lastUpdated:    'May 18, 2026',
+};
+
 // ── Data ────────────────────────────────────────────────────────────────────
 
 const MFA_ST = {
@@ -271,7 +282,7 @@ const RBAC_ROLES = [
 const CLEANUP_ITEMS = [
   { item: 'Reduce Super Admins from 7 to 3', risk: 'critical', why: 'Each Super Admin is a full breach surface. A compromised Super Admin account gives total control over all 219 users, all data, all connected systems.', fix: 'Demote Rick Joslin, Nicole Buechler, Secellia Riley, Stephanie Noll to delegated admin or standard roles. Keep: Brandon Spears, Jeremy Garrigan, + 1 designated IT lead.' },
   { item: 'Vendor shared admin credentials', risk: 'critical', why: 'Shared usernames/passwords for vendor portals (e.g. insurance systems, payroll) mean no individual accountability and cannot be revoked selectively when someone leaves.', fix: 'Audit all vendor portals. Create individual accounts where possible. Where shared accounts are unavoidable, store in a team password manager (1Password Teams) with one-click rotation.' },
-  { item: 'Personal Google accounts in active use', risk: 'high', why: 'Any BrightPath data accessed or stored in a personal @gmail.com account is outside BrightPath\'s security perimeter, cannot be audited, and may not be recoverable if that person leaves.', fix: 'Identify users accessing BrightPath systems with personal accounts. Migrate to @brightpathddso.org accounts. Set up Workspace data loss prevention (DLP) alerts.' },
+  { item: 'Personal Google accounts in active use', risk: 'high', why: 'Any BrightPath data accessed or stored in a personal @gmail.com account is outside BrightPath\'s security perimeter, cannot be audited, and may not be recoverable if that person leaves.', fix: 'Identify users accessing BrightPath systems with personal accounts. Migrate to @brightpath-mn.com accounts. Set up Workspace data loss prevention (DLP) alerts.' },
   { item: '2FA at 3% (7/219 users)',          risk: 'critical', why: 'Without 2FA, a single stolen password gives full account access. 212 of 219 accounts are one phishing email away from compromise.', fix: 'Phase A (May 15): enforce 2FA on all Super Admin + Leadership accounts. Phase B (May 27): enforce org-wide. See rollout timeline.' },
   { item: 'No phishing or DLP policies',      risk: 'high',    why: 'Without phishing-resistant email policies, staff receive malicious emails that impersonate Google, vendors, or leadership. No alert if someone forwards sensitive data externally.', fix: 'Enable Google Workspace Spam/Phishing filters (Advanced Phishing and Malware Protection). Set up DLP rules in Admin Console to flag external forwarding of sensitive content.' },
   { item: 'Inactive user accounts',           risk: 'medium',  why: 'Dormant accounts that haven\'t logged in for 30+ days are a persistent access risk — former staff or contractors may retain active credentials.', fix: 'Run Admin Console → Reports → User Activity. Suspend accounts inactive 30+ days. Confirm with manager before deletion.' },
@@ -290,6 +301,123 @@ const MFA_GUIDE_STEPS = [
 
 // ── Components ───────────────────────────────────────────────────────────────
 
+// ── Generic inline picker (MFA / SSO / Risk) ────────────────────────────────
+const SecPicker = ({ value, options, config, onChange }) => {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [open]);
+
+  const cur = config[value] || config['unknown'] || Object.values(config)[0];
+  return (
+    <div className="sec-picker" ref={ref} onClick={(e) => e.stopPropagation()}>
+      <button className="sec-picker-trigger" onClick={() => setOpen(!open)}
+              style={{ background: cur.bg, color: cur.fg }}>
+        {cur.dot && <span className="sec-picker-dot" style={{ background: cur.dot }} />}
+        <span>{cur.label}</span>
+        <span className="sec-picker-arrow">▾</span>
+      </button>
+      {open && (
+        <div className="sec-picker-menu">
+          {options.map((opt) => {
+            const st = config[opt];
+            if (!st) return null;
+            return (
+              <button key={opt}
+                className={`sec-picker-item ${value === opt ? 'sec-picker-item-on' : ''}`}
+                onClick={() => { onChange(opt); setOpen(false); }}>
+                {st.dot && <span className="sec-picker-dot" style={{ background: st.dot }} />}
+                <span>{st.label}</span>
+                {value === opt && <span className="sec-picker-check">✓</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const SecAvatar = ({ pid, size = 22 }) => {
+  const p = window.PEOPLE[pid];
+  if (!p) return null;
+  const bg = p.org === 's360' ? '#0f172a' : '#7c2d12';
+  return (
+    <span className="avatar" title={`${p.name} · ${p.role}`}
+          style={{ width: size, height: size, fontSize: size * 0.4, background: bg }}>
+      {p.initials}
+    </span>
+  );
+};
+
+const SecAvatarStack = ({ ids, size = 22 }) => {
+  if (!ids || !ids.length) return <span className="avatar-empty">—</span>;
+  return (
+    <div className="avatar-stack">
+      {ids.map((pid) => <SecAvatar key={pid} pid={pid} size={size} />)}
+    </div>
+  );
+};
+
+const SecOwnerPicker = ({ owners, onChange }) => {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [open]);
+
+  const selected = owners || [];
+  const toggle = (pid) => {
+    const next = selected.includes(pid) ? selected.filter((x) => x !== pid) : [...selected, pid];
+    onChange(next);
+  };
+
+  return (
+    <div className="owner-picker-wrap sec-owner-picker" ref={ref} onClick={(e) => e.stopPropagation()}>
+      <button className="owner-picker-trigger" onClick={() => setOpen(!open)}>
+        {selected.length > 0
+          ? <SecAvatarStack ids={selected} size={22} />
+          : <span className="avatar-empty owner-picker-add">+ Add</span>}
+      </button>
+      {open && (
+        <div className="owner-picker-menu">
+          <div className="owner-picker-group-label">S360</div>
+          {window.PEOPLE_LIST.filter((p) => p.org === 's360').map((p) => {
+            const checked = selected.includes(p.id);
+            return (
+              <button key={p.id} className={`owner-picker-item ${checked ? 'owner-picker-item-on' : ''}`}
+                      onClick={() => toggle(p.id)}>
+                <span className="avatar" style={{ width: 22, height: 22, fontSize: 8.8, background: '#0f172a' }}>{p.initials}</span>
+                <span className="owner-picker-name">{p.name}</span>
+                {checked && <span className="owner-picker-check">✓</span>}
+              </button>
+            );
+          })}
+          <div className="owner-picker-group-label" style={{ marginTop: 4 }}>BrightPath</div>
+          {window.PEOPLE_LIST.filter((p) => p.org === 'brightpath').map((p) => {
+            const checked = selected.includes(p.id);
+            return (
+              <button key={p.id} className={`owner-picker-item ${checked ? 'owner-picker-item-on' : ''}`}
+                      onClick={() => toggle(p.id)}>
+                <span className="avatar" style={{ width: 22, height: 22, fontSize: 8.8, background: '#7c2d12' }}>{p.initials}</span>
+                <span className="owner-picker-name">{p.name}</span>
+                {checked && <span className="owner-picker-check">✓</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const SecBadge = ({ status, config }) => {
   const st = config[status] || config['unknown'];
   return (
@@ -300,28 +428,701 @@ const SecBadge = ({ status, config }) => {
   );
 };
 
-const SecCard = ({ title, value, sub, accent, children }) => (
-  <div className="sec-stat" style={{ '--sec-accent': accent }}>
+const SecCard = ({ title, value, sub, accent, children, onClick }) => (
+  <div className={`sec-stat${onClick ? ' sec-stat-clickable' : ''}`}
+       style={{ '--sec-accent': accent }}
+       onClick={onClick}
+       title={onClick ? `Click to view ${title}` : undefined}>
     <div className="sec-stat-value">{value}</div>
     <div className="sec-stat-label">{title}</div>
     {sub && <div className="sec-stat-sub">{sub}</div>}
     {children}
+    {onClick && <div className="sec-stat-click-hint">View list →</div>}
   </div>
 );
 
+// ── Google Workspace User Modal ───────────────────────────────────────────────
+// null = "not a 2FA method" → show as "—" in the method column
+// Exported as window.GW_METHOD_LABELS so team-compliance.jsx can share it
+const GW_METHOD_LABELS = {
+  // ── Actual values returned by login_challenge_method ──────────────────────
+  device_prompt:             { label: 'Phone Prompt',      icon: '🔔', cls: 'gw-method-prompt' },
+  idv_preregistered_phone:   { label: 'Phone Prompt',      icon: '🔔', cls: 'gw-method-prompt' },
+  idv_totp:                  { label: 'Authenticator App', icon: '📱', cls: 'gw-method-app' },
+  idv_backup_code:           { label: 'Backup Code',       icon: '🗝',  cls: 'gw-method-backup' },
+  internal_two_factor:       { label: 'Google Prompt',     icon: '🔔', cls: 'gw-method-prompt' },
+  security_key:              { label: 'Security Key',      icon: '🔑', cls: 'gw-method-key' },
+  passkey:                   { label: 'Passkey',           icon: '🔐', cls: 'gw-method-key' },
+  // ── Legacy / 2sv_enroll event values ──────────────────────────────────────
+  google_authenticator:      { label: 'Authenticator App', icon: '📱', cls: 'gw-method-app' },
+  authenticator_app:         { label: 'Authenticator App', icon: '📱', cls: 'gw-method-app' },
+  totp:                      { label: 'Authenticator App', icon: '📱', cls: 'gw-method-app' },
+  sms:                       { label: 'SMS / Text',        icon: '💬', cls: 'gw-method-sms' },
+  phone:                     { label: 'Phone Call',        icon: '📞', cls: 'gw-method-sms' },
+  google_prompt:             { label: 'Google Prompt',     icon: '🔔', cls: 'gw-method-prompt' },
+  android_device:            { label: 'Phone Prompt',      icon: '🔔', cls: 'gw-method-prompt' },
+  ios_device:                { label: 'Phone Prompt',      icon: '🔔', cls: 'gw-method-prompt' },
+  backup_code:               { label: 'Backup Code',       icon: '🗝',  cls: 'gw-method-backup' },
+  // ── Not 2FA methods — hide them (null = show as —) ────────────────────────
+  password:                  null,  // password-only login, not a 2FA challenge
+  none:                      null,  // no challenge presented
+  reauth:                    null,  // re-authentication (re-enter password), not 2FA
+  google_password:           null,  // password challenge (first factor only)
+  'google password':         null,  // same, space-separated variant from API
+  reauthentication:          null,  // variant spelling
+};
+
+const GWUserModal = ({ users, filter, search, onSearchChange, onClose, methodMap = {}, methodsStatus = 'idle', onReconnect }) => {
+  let shown = filter === 'enabled' ? users.filter(u => u.isEnrolledIn2Sv)
+            : filter === 'no2fa'   ? users.filter(u => !u.isEnrolledIn2Sv)
+            : users;
+
+  if (search) {
+    const q = search.toLowerCase();
+    shown = shown.filter(u =>
+      (u.name?.fullName || '').toLowerCase().includes(q) ||
+      (u.primaryEmail   || '').toLowerCase().includes(q) ||
+      (u.orgUnitPath    || '').toLowerCase().includes(q)
+    );
+  }
+
+  // For 'all' / 'coverage': sort no-2FA users to the top
+  if (filter === 'all' || filter === 'coverage') {
+    shown = [...shown].sort((a, b) => {
+      if (a.isEnrolledIn2Sv !== b.isEnrolledIn2Sv) return a.isEnrolledIn2Sv ? 1 : -1;
+      return (a.name?.fullName || '').localeCompare(b.name?.fullName || '');
+    });
+  }
+
+  const fmtDate = (d) => {
+    if (!d) return '—';
+    const dt = new Date(d);
+    if (dt.getFullYear() < 2000) return 'Never';
+    return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
+  };
+
+  const titles = {
+    all:      'All Active Accounts',
+    enabled:  '2FA Enabled Users',
+    no2fa:    'Users Without 2FA',
+    coverage: '2FA Coverage — All Users',
+  };
+
+  return (
+    <div className="gw-modal-backdrop" onClick={onClose}>
+      <div className="gw-modal" onClick={e => e.stopPropagation()}>
+        <div className="gw-modal-head">
+          <div className="gw-modal-head-left">
+            <div className="gw-modal-eyebrow">GOOGLE WORKSPACE · BRIGHTPATH-MN.COM</div>
+            <h3 className="gw-modal-title">{titles[filter] || 'Users'}</h3>
+            <div className="gw-modal-count">
+              {shown.length} user{shown.length !== 1 ? 's' : ''}
+              {search && <span className="gw-modal-count-search"> matching "{search}"</span>}
+            </div>
+          </div>
+          <button className="gw-modal-close" onClick={onClose}>✕</button>
+        </div>
+
+        <div className="gw-modal-search-wrap">
+          <span className="gw-modal-search-icon">⌕</span>
+          <input
+            className="gw-modal-search"
+            placeholder="Search by name, email, or org unit…"
+            value={search}
+            onChange={e => onSearchChange(e.target.value)}
+            autoFocus
+          />
+          {search && (
+            <button className="gw-modal-search-clear" onClick={() => onSearchChange('')}>✕</button>
+          )}
+        </div>
+
+        <div className="gw-modal-table-wrap">
+          {shown.length === 0 ? (
+            <div className="gw-modal-empty">No users match your search.</div>
+          ) : (
+            <table className="gw-modal-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Org Unit</th>
+                  <th>Last Login</th>
+                  <th>2FA Status</th>
+                  <th>2FA Method</th>
+                  <th>Role</th>
+                </tr>
+              </thead>
+              <tbody>
+                {shown.map(u => {
+                  // Collect all detected methods for this user (new: array; old cache: string)
+                  const rawMethods = Array.isArray(methodMap[u.primaryEmail])
+                    ? methodMap[u.primaryEmail]
+                    : methodMap[u.primaryEmail] ? [methodMap[u.primaryEmail]] : [];
+                  // Resolve labels, drop null entries (non-2FA values like 'password')
+                  const methodInfos = rawMethods
+                    .map(raw => {
+                      const lk = GW_METHOD_LABELS[raw.toLowerCase()];
+                      if (lk === null) return null;
+                      return lk !== undefined ? lk : { label: raw, icon: '❓', cls: 'gw-method-other' };
+                    })
+                    .filter(Boolean);
+                  return (
+                  <tr key={u.id || u.primaryEmail} className={!u.isEnrolledIn2Sv ? 'gw-row-no2fa' : ''}>
+                    <td className="gw-user-name">{u.name?.fullName || '—'}</td>
+                    <td className="gw-user-email">{u.primaryEmail}</td>
+                    <td className="gw-user-ou">{(u.orgUnitPath || '/').replace(/^\//, '') || 'Root'}</td>
+                    <td className="gw-user-login">{fmtDate(u.lastLoginTime)}</td>
+                    <td>
+                      {u.isEnrolledIn2Sv
+                        ? <span className="gw-2fa-on">✓ Enabled</span>
+                        : <span className="gw-2fa-off">⚠ Not set</span>}
+                    </td>
+                    <td>
+                      {u.isEnrolledIn2Sv ? (
+                        methodInfos.length > 0
+                          ? <div className="gw-method-badges">
+                              {methodInfos.map((mi, i) => (
+                                <span key={i} className={`gw-method-badge ${mi.cls}`}>{mi.icon} {mi.label}</span>
+                              ))}
+                            </div>
+                          : methodsStatus === 'loading'
+                            ? <span className="gw-method-loading">Loading…</span>
+                            : <span className="gw-method-badge gw-method-other" title="2FA enabled but method not detected in recent login events">❓ Unknown</span>
+                      ) : (
+                        <span className="gw-method-na" style={{ color: '#94a3b8', fontSize: 12 }}>Not enrolled</span>
+                      )}
+                    </td>
+                    <td>
+                      {u.isAdmin
+                        ? <span className="gw-role-badge gw-role-admin">Super Admin</span>
+                        : u.isDelegatedAdmin
+                        ? <span className="gw-role-badge gw-role-delegated">Delegated</span>
+                        : <span className="gw-role-user">User</span>}
+                    </td>
+                  </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        <div className="gw-modal-foot">
+          <div className="gw-modal-foot-left">
+            <span className="gw-modal-foot-note">
+              Live data · Google Workspace Admin · {users.length} total active account{users.length !== 1 ? 's' : ''}
+            </span>
+            {methodsStatus === 'scope_denied' && (
+              <span className="gw-methods-notice gw-methods-notice-warn">
+                ⚠️ 2FA method data needs the Admin Reports scope.
+                <button className="gw-methods-reconnect" onClick={onReconnect}>Reconnect to enable →</button>
+              </span>
+            )}
+            {methodsStatus === 'no_data' && (
+              <span className="gw-methods-notice">
+                ℹ️ No recent 2FA login activity found — users may not have logged in within the last 30 days, or the Reports API data hasn't populated yet. Try reconnecting.
+                <button className="gw-methods-reconnect" onClick={onReconnect}>Reconnect →</button>
+              </span>
+            )}
+            {methodsStatus === 'error' && (
+              <span className="gw-methods-notice gw-methods-notice-warn">
+                ⚠️ Could not load method data.
+                <button className="gw-methods-reconnect" onClick={onReconnect}>Retry →</button>
+              </span>
+            )}
+            {methodsStatus === 'loading' && (
+              <span className="gw-methods-notice">⟳ Loading 2FA method data…</span>
+            )}
+            {methodsStatus === 'loaded' && (
+              <span className="gw-methods-notice gw-methods-notice-ok">✓ 2FA method data loaded</span>
+            )}
+          </div>
+          <button className="gw-modal-foot-close" onClick={onClose}>Close</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ── MFA Heatmap Section ──────────────────────────────────────────────────────
-const MFAHeatmap = () => {
+const MFAHeatmap = ({ secOwners, onSecOwnerChange, secOverrides, onSecOverrideChange, filterOwner, userSecSystems, onAddUserSystem, onDeleteUserSystem }) => {
   const [expanded, setExpanded] = React.useState(null);
   const [guideOpen, setGuideOpen] = React.useState(false);
+  const [editingRow, setEditingRow] = React.useState(null);
+  const [editDraft, setEditDraft] = React.useState({});
+  const [addingMFA, setAddingMFA] = React.useState(false);
+  const [addDraft,  setAddDraft]  = React.useState({ name: '', category: '', mfa: 'unknown', sso: 'unknown', risk: 'medium', rollout: 'validate' });
 
-  const active = SEC_SYSTEMS.filter((s) => !s.inactive);
-  const full = active.filter((s) => s.mfa === 'full').length;
-  const unknown = active.filter((s) => s.mfa === 'unknown').length;
-  const critical = active.filter((s) => s.risk === 'critical').length;
+  // Merge hardcoded + user-added systems
+  const allMFASystems = [
+    ...SEC_SYSTEMS,
+    ...(userSecSystems || []).filter(s => s.system_type === 'mfa').map(s => ({
+      name: s.name, category: s.category || '', mfa: s.mfa_status || 'unknown',
+      sso: s.sso_status || 'unknown', risk: s.risk_level || 'medium',
+      rollout: s.rollout || 'validate', mfaNotes: s.mfa_notes || '',
+      ssoNotes: s.sso_notes || '', action: s.action_text || '',
+      priority: 99, _userAdded: true, _id: s.id,
+    })),
+  ];
+
+  const saveMFASystem = () => {
+    if (!addDraft.name.trim()) return;
+    const row = {
+      id: 'usr-' + Date.now(), system_type: 'mfa',
+      name: addDraft.name.trim(), category: addDraft.category.trim(),
+      mfa_status: addDraft.mfa, sso_status: addDraft.sso,
+      risk_level: addDraft.risk, rollout: addDraft.rollout,
+      mfa_notes: '', sso_notes: '', action_text: '',
+    };
+    onAddUserSystem(row);
+    setAddingMFA(false);
+    setAddDraft({ name: '', category: '', mfa: 'unknown', sso: 'unknown', risk: 'medium', rollout: 'validate' });
+  };
+
+  // ── Google Admin OAuth ─────────────────────────────────────────────────────
+  const GW_CLIENT_ID = '1011406832233-gg1o0slnva79dem8m8ukei0ovi2f2tsi.apps.googleusercontent.com';
+  const [gwToken,   setGwToken]   = React.useState(null);
+  const [gwUsers,   setGwUsers]   = React.useState([]);
+  const [gwLoading, setGwLoading] = React.useState(false);
+  const [gwModal,   setGwModal]   = React.useState(null); // null | 'all' | 'enabled' | 'no2fa' | 'coverage'
+  const [gwError,   setGwError]   = React.useState(null);
+  const [gwSearch,  setGwSearch]  = React.useState('');
+  const [methodMap,     setMethodMap]     = React.useState({});   // email → raw method string
+  const [methodsStatus, setMethodsStatus] = React.useState('idle'); // idle|loading|loaded|scope_denied|no_data|error
+  const [cacheInfo,     setCacheInfo]     = React.useState(null);  // { at, by } — last Supabase sync
+  const [cacheLoadErr,  setCacheLoadErr]  = React.useState(null);  // visible load error
+  const gwUsersRef    = React.useRef([]);   // captures fetched users for cache save
+  const methodMapRef  = React.useRef({});   // captures fetched methods for cache save
+
+  // Load cached GW data on mount — visible to ALL users without Google login
+  React.useEffect(() => {
+    setCacheLoadErr(null);
+    window.SupabaseDB.loadGWCache()
+      .then((cache) => {
+        if (!cache) {
+          // Table exists but no row yet — admin hasn't synced
+          return;
+        }
+        const { users, methodMap: mm } = cache.data || {};
+        if (users?.length) {
+          setGwUsers(users);
+          setCacheInfo({ at: cache.updated_at, by: cache.updated_by });
+        }
+        if (mm && Object.keys(mm).length) {
+          // Normalize: old cache stored strings; new format stores string[]. Upgrade in place.
+          const normalized = {};
+          for (const [k, v] of Object.entries(mm)) normalized[k] = Array.isArray(v) ? v : [v];
+          setMethodMap(normalized);
+          setMethodsStatus('loaded');
+        } else {
+          // Cache loaded but no method data — admin needs to re-sync
+          setMethodsStatus('no_data');
+        }
+      })
+      .catch((err) => {
+        console.error('[GW Cache load]', err);
+        setCacheLoadErr(err.message || 'Could not load cached data from Supabase.');
+      });
+  }, []);
+
+  const connectGoogle = () => {
+    if (!window.google?.accounts?.oauth2) {
+      setGwError('Google Identity Services not loaded yet — please refresh the page and try again.');
+      return;
+    }
+    const client = window.google.accounts.oauth2.initTokenClient({
+      client_id: GW_CLIENT_ID,
+      scope: [
+        'https://www.googleapis.com/auth/admin.directory.user.readonly',
+        'https://www.googleapis.com/auth/admin.reports.usage.readonly',
+        'https://www.googleapis.com/auth/admin.reports.audit.readonly',
+      ].join(' '),
+      callback: async (resp) => {
+        if (resp.error) { setGwError(`Authentication error: ${resp.error}`); return; }
+        setGwToken(resp.access_token);
+        await Promise.all([fetchGWUsers(resp.access_token), fetchGWMethods(resp.access_token)]);
+        // Save slim user list + method map to Supabase — all other viewers see this immediately
+        const users = gwUsersRef.current;
+        if (users.length > 0) {
+          const slim = users.map(u => ({
+            id: u.id, primaryEmail: u.primaryEmail,
+            name: { fullName: u.name?.fullName },
+            orgUnitPath: u.orgUnitPath, lastLoginTime: u.lastLoginTime,
+            isEnrolledIn2Sv: u.isEnrolledIn2Sv, isEnforced2Sv: u.isEnforced2Sv,
+            isAdmin: u.isAdmin, isDelegatedAdmin: u.isDelegatedAdmin, suspended: u.suspended,
+          }));
+          const syncedBy = resp.email || 'Admin';
+          window.SupabaseDB.saveGWCache(slim, methodMapRef.current, syncedBy).catch(console.error);
+          setCacheInfo({ at: new Date().toISOString(), by: syncedBy });
+        }
+      },
+    });
+    client.requestAccessToken();
+  };
+
+  const fetchGWUsers = async (token) => {
+    setGwLoading(true);
+    setGwError(null);
+    try {
+      let allUsers = [];
+      let pageToken = null;
+      do {
+        const params = new URLSearchParams({
+          domain: 'brightpath-mn.com',
+          maxResults: '500',
+          orderBy: 'email',
+          ...(pageToken && { pageToken }),
+        });
+        const res = await fetch(
+          `https://admin.googleapis.com/admin/directory/v1/users?${params}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!res.ok) {
+          const e = await res.json();
+          throw new Error(e.error?.message || `HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        allUsers = [...allUsers, ...(data.users || [])];
+        pageToken = data.nextPageToken || null;
+      } while (pageToken);
+      setGwUsers(allUsers);
+      gwUsersRef.current = allUsers;
+    } catch (e) {
+      setGwError(e.message);
+    } finally {
+      setGwLoading(false);
+    }
+  };
+
+  const fetchGWMethods = async (token) => {
+    setMethodsStatus('loading');
+
+    // ── Core fetch: query login audit events, return items array ─────────────
+    const fetchLoginItems = async (extraParams, cap = 5000) => {
+      let allItems = [];
+      let pageToken = null;
+      do {
+        const params = new URLSearchParams({
+          maxResults: '1000',
+          ...extraParams,
+          ...(pageToken && { pageToken }),
+        });
+        const res = await fetch(
+          `https://admin.googleapis.com/admin/reports/v1/activity/users/all/applications/login?${params}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (res.status === 403) return { scopeDenied: true, items: [] };
+        if (!res.ok) {
+          const txt = await res.text().catch(() => '');
+          console.warn('[GW Methods] HTTP', res.status, txt.slice(0, 200));
+          return { items: allItems };
+        }
+        const data = await res.json();
+        allItems = [...allItems, ...(data.items || [])];
+        pageToken = data.nextPageToken || null;
+        if (allItems.length >= cap) break;
+      } while (pageToken);
+      return { items: allItems };
+    };
+
+    // ── Extract email→methods map: collect ALL unique 2FA methods seen per user ─
+    const SKIP_VALUES = new Set(['password', 'none', '']);
+    const buildMap = (items, paramNames) => {
+      const sets = {};  // email → Set<string> of all unique method values
+      for (const item of items) {
+        const email = item.actor?.email;
+        if (!email) continue;
+        for (const event of (item.events || [])) {
+          for (const pName of paramNames) {
+            const mp = (event.parameters || []).find(p => p.name === pName);
+            const val = mp?.value || mp?.stringValue || mp?.multiValue?.[0];
+            if (val && !SKIP_VALUES.has(val.toLowerCase())) {
+              if (!sets[email]) sets[email] = new Set();
+              sets[email].add(val.toLowerCase());
+            }
+          }
+        }
+      }
+      // Convert Sets → arrays
+      const map = {};
+      for (const [email, set] of Object.entries(sets)) map[email] = [...set];
+      return map;
+    };
+
+    // ── Diagnostic: log all unique event/param names seen in a batch ─────────
+    const diagnose = (label, items) => {
+      const eventNames  = [...new Set(items.flatMap(i => (i.events || []).map(e => e.name)))];
+      const paramNames  = [...new Set(items.flatMap(i =>
+        (i.events || []).flatMap(e => (e.parameters || []).map(p => p.name))
+      ))];
+      console.log(`[GW Methods] ${label} — ${items.length} items | events: [${eventNames.join(', ')}] | params: [${paramNames.join(', ')}]`);
+    };
+
+    try {
+      const sevenDaysAgo  = new Date(); sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const sixMonthsAgo  = new Date(); sixMonthsAgo.setDate(sixMonthsAgo.getDate() - 180);
+
+      // ── Step 1: Broad scan — ALL login events last 7 days (no eventName filter)
+      // This shows us exactly what event names + param names Google sends for this org.
+      console.log('[GW Methods] Step 1: broad scan, all login events (last 7d)');
+      const broad = await fetchLoginItems({ startTime: sevenDaysAgo.toISOString() });
+      if (broad.scopeDenied) { setMethodsStatus('scope_denied'); return; }
+      diagnose('broad-7d', broad.items);
+
+      // Try every known 2FA method param name from the broad scan
+      const knownMethodParams = [
+        'login_challenge_method', 'challenge_method', 'second_factor_method',
+        'two_sv_method', '2sv_method', 'method', 'two_step_method',
+        'login_type',   // sometimes encodes 2FA type
+      ];
+      if (broad.items.length > 0) {
+        const m = buildMap(broad.items, knownMethodParams);
+        if (Object.keys(m).length > 0) {
+          console.log('[GW Methods] Step 1 succeeded:', Object.keys(m).length, 'users mapped');
+          setMethodMap(m); methodMapRef.current = m; setMethodsStatus('loaded'); return;
+        }
+      }
+
+      // ── Step 2: login_challenge — last 30 days (dedicated event type)
+      console.log('[GW Methods] Step 2: login_challenge events (last 30d)');
+      const r2 = await fetchLoginItems({ eventName: 'login_challenge', startTime: thirtyDaysAgo.toISOString() });
+      if (r2.scopeDenied) { setMethodsStatus('scope_denied'); return; }
+      diagnose('login_challenge-30d', r2.items);
+      if (r2.items.length > 0) {
+        const m = buildMap(r2.items, knownMethodParams);
+        if (Object.keys(m).length > 0) {
+          console.log('[GW Methods] Step 2 succeeded:', Object.keys(m).length, 'users mapped');
+          setMethodMap(m); methodMapRef.current = m; setMethodsStatus('loaded'); return;
+        }
+      }
+
+      // ── Step 3: 2sv_enroll — last 180 days
+      console.log('[GW Methods] Step 3: 2sv_enroll events (last 180d)');
+      const r3 = await fetchLoginItems({ eventName: '2sv_enroll', startTime: sixMonthsAgo.toISOString() });
+      if (r3.scopeDenied) { setMethodsStatus('scope_denied'); return; }
+      diagnose('2sv_enroll-180d', r3.items);
+      if (r3.items.length > 0) {
+        const m = buildMap(r3.items, knownMethodParams);
+        if (Object.keys(m).length > 0) {
+          console.log('[GW Methods] Step 3 succeeded:', Object.keys(m).length, 'users mapped');
+          setMethodMap(m); methodMapRef.current = m; setMethodsStatus('loaded'); return;
+        }
+      }
+
+      // ── Step 4: Usage Report fallback
+      console.log('[GW Methods] Step 4: Usage Report fallback');
+      await fetchGWMethodsFromUsage(token);
+    } catch (e) {
+      console.error('[GW Methods] Error:', e);
+      await fetchGWMethodsFromUsage(token);
+    }
+  };
+
+  const fetchGWMethodsFromUsage = async (token) => {
+    // Fallback: Usage Report (delayed 24-48hrs, less detail but available without audit scope)
+    try {
+      for (let daysBack = 1; daysBack <= 5; daysBack++) {
+        const d = new Date();
+        d.setDate(d.getDate() - daysBack);
+        const dateStr = d.toISOString().split('T')[0];
+        let allReports = [];
+        let pageToken = null;
+        do {
+          const params = new URLSearchParams({
+            parameters: 'accounts:is_2sv_enrolled,accounts:two_sv_method,accounts:two_step_verification_method',
+            maxResults: '500',
+            ...(pageToken && { pageToken }),
+          });
+          const res = await fetch(
+            `https://admin.googleapis.com/admin/reports/v1/usage/users/all/dates/${dateStr}?${params}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          if (!res.ok) break;
+          const data = await res.json();
+          allReports = [...allReports, ...(data.usageReports || [])];
+          pageToken = data.nextPageToken || null;
+        } while (pageToken);
+
+        if (allReports.length > 0) {
+          const map = {};
+          for (const r of allReports) {
+            const email = r.entity?.userEmail;
+            if (!email) continue;
+            const mp = (r.parameters || []).find(p =>
+              p.name === 'accounts:two_sv_method' || p.name === 'accounts:two_step_verification_method'
+            );
+            if (mp?.stringValue) map[email] = [mp.stringValue.toLowerCase()];
+          }
+          if (Object.keys(map).length > 0) {
+            setMethodMap(map);
+            methodMapRef.current = map;
+            setMethodsStatus('loaded');
+            return;
+          }
+          setMethodsStatus('no_data');
+          return;
+        }
+      }
+      setMethodsStatus('no_data');
+    } catch (e) {
+      console.warn('[GW Methods usage]', e.message);
+      setMethodsStatus('no_data');
+    }
+  };
+
+  const activeGWUsers = gwUsers.filter(u => !u.suspended);
+  const liveStats = activeGWUsers.length > 0 ? {
+    activeAccounts: activeGWUsers.length,
+    twoFAEnabled:   activeGWUsers.filter(u => u.isEnrolledIn2Sv).length,
+    noTwoFA:        activeGWUsers.filter(u => !u.isEnrolledIn2Sv).length,
+    coverage:       Math.round(activeGWUsers.filter(u => u.isEnrolledIn2Sv).length / activeGWUsers.length * 100),
+    lastUpdated:    new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+  } : null;
+  const stats = liveStats || GW_STATS;
+
+  const startEdit = (s) => {
+    const ov = secOverrides[s.name] || {};
+    setEditDraft({
+      mfaNotes: ov.mfaNotes != null ? ov.mfaNotes : s.mfaNotes,
+      ssoNotes: ov.ssoNotes != null ? ov.ssoNotes : s.ssoNotes,
+      action:   ov.action   != null ? ov.action   : s.action,
+    });
+    setEditingRow(s.name);
+  };
+  const saveEdit = () => {
+    onSecOverrideChange(editingRow, editDraft);
+    setEditingRow(null);
+  };
+  const cancelEdit = () => setEditingRow(null);
+  const deleteRow = (s) => {
+    const label = typeof s === 'string' ? s : s.name;
+    const msg   = s._userAdded ? `Remove "${label}"?` : `Remove "${label}" from the MFA list? This can be undone by your admin.`;
+    if (confirm(msg)) {
+      onSecOverrideChange(label, { deleted: true });
+      if (s._userAdded && onDeleteUserSystem) onDeleteUserSystem(s._id);
+      if (expanded === label) setExpanded(null);
+    }
+  };
+
+  const active = allMFASystems.filter((s) => !s.inactive && !secOverrides[s.name]?.deleted);
+  const full = active.filter((s) => (secOverrides[s.name]?.mfaStatus ?? s.mfa) === 'full').length;
+  const unknown = active.filter((s) => (secOverrides[s.name]?.mfaStatus ?? s.mfa) === 'unknown').length;
+  const critical = active.filter((s) => (secOverrides[s.name]?.riskLevel ?? s.risk) === 'critical').length;
 
   return (
     <div className="sec-section">
-      {/* Summary cards */}
+
+      {/* ── GW Account 2FA Enrollment ── */}
+      <div className="sec-block sec-gw-block">
+        <div className="sec-block-head">
+          <div>
+            <div className="sec-block-eyebrow">GOOGLE WORKSPACE · BRIGHTPATH-MN.COM</div>
+            <h3 className="sec-block-title">2FA Enrollment Status</h3>
+          </div>
+          <div className="gw-connect-area">
+            {gwToken ? (
+              <React.Fragment>
+                <span className="gw-connected-badge">
+                  {gwLoading ? '⟳ Refreshing…' : '🔗 Live · Connected'}
+                </span>
+                <button className="gw-refresh-btn" onClick={() => Promise.all([fetchGWUsers(gwToken), fetchGWMethods(gwToken)])} disabled={gwLoading}>
+                  ↻ Refresh
+                </button>
+              </React.Fragment>
+            ) : cacheInfo ? (
+              <React.Fragment>
+                <span className="gw-cache-badge">
+                  📋 Synced {new Date(cacheInfo.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                  {cacheInfo.by ? ` · ${cacheInfo.by}` : ''}
+                </span>
+                <button className="gw-sync-btn" onClick={connectGoogle} disabled={gwLoading} title="Requires a BrightPath Google Admin account (brightpath-mn.com)">
+                  {gwLoading ? '⟳ Syncing…' : '↻ Sync (Admin only)'}
+                </button>
+              </React.Fragment>
+            ) : (
+              <React.Fragment>
+                <span className="sec-gw-updated">Last updated: {stats.lastUpdated}</span>
+                <button className="gw-connect-btn" onClick={connectGoogle} disabled={gwLoading}>
+                  {gwLoading ? '⟳ Loading…' : '🔑 Connect Google Admin'}
+                </button>
+              </React.Fragment>
+            )}
+          </div>
+        </div>
+
+        {gwError && (
+          <div className="gw-error-bar">
+            ⚠️ {gwError}
+            <button className="gw-error-dismiss" onClick={() => setGwError(null)}>✕</button>
+          </div>
+        )}
+        {cacheLoadErr && (
+          <div className="gw-error-bar">
+            ⚠️ Cache load error: {cacheLoadErr}
+            <button className="gw-error-dismiss" onClick={() => setCacheLoadErr(null)}>✕</button>
+          </div>
+        )}
+
+        {!gwToken && !cacheInfo && (
+          <div className="gw-connect-hint">
+            💡 Connect your Google Admin account to get live user data — then click any card to see the full user list. Data is shared with all viewers automatically.
+          </div>
+        )}
+
+        {/* Derive local consts for card interactivity */}
+        {(() => {
+          const hasUserData = activeGWUsers.length > 0;
+          const cardSub = gwToken ? 'brightpath-mn.com · Live ✅' : cacheInfo ? 'brightpath-mn.com · Cached ✅' : 'BrightPath domain ✅';
+          return (
+            <div className="sec-stats-row sec-gw-stats-row">
+              <SecCard
+                title="Active Accounts"
+                value={stats.activeAccounts}
+                sub={cardSub}
+                accent="#6366f1"
+                onClick={hasUserData ? () => { setGwSearch(''); setGwModal('all'); } : undefined}
+              />
+              <SecCard
+                title="2FA Enabled"
+                value={stats.twoFAEnabled}
+                sub={`of ${stats.activeAccounts} accounts`}
+                accent="#10b981"
+                onClick={hasUserData ? () => { setGwSearch(''); setGwModal('enabled'); } : undefined}
+              >
+                <div className="sec-gw-bar-wrap">
+                  <div className="sec-gw-bar" style={{ width: `${stats.coverage}%`, background: '#10b981' }} />
+                </div>
+              </SecCard>
+              <SecCard
+                title="No 2FA"
+                value={stats.noTwoFA}
+                sub="require action ⚠️"
+                accent="#ef4444"
+                onClick={hasUserData ? () => { setGwSearch(''); setGwModal('no2fa'); } : undefined}
+              >
+                <div className="sec-gw-bar-wrap">
+                  <div className="sec-gw-bar" style={{ width: `${100 - stats.coverage}%`, background: '#ef4444' }} />
+                </div>
+              </SecCard>
+              <SecCard
+                title="2FA Coverage"
+                value={`${stats.coverage}%`}
+                sub="of all active accounts"
+                accent="#f59e0b"
+                onClick={hasUserData ? () => { setGwSearch(''); setGwModal('coverage'); } : undefined}
+              >
+                <div className="sec-gw-bar-wrap">
+                  <div className="sec-gw-bar" style={{ width: `${stats.coverage}%`, background: '#f59e0b' }} />
+                </div>
+              </SecCard>
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* Summary cards — system-level */}
       <div className="sec-stats-row">
         <SecCard title="Systems Reviewed" value={active.length} sub="Active systems" accent="#6366f1" />
         <SecCard title="Full MFA Support" value={full} sub="Ready to enforce" accent="#10b981" />
@@ -371,65 +1172,160 @@ const MFAHeatmap = () => {
                 <th className="sec-hm-cell">SSO Support</th>
                 <th className="sec-hm-cell">Risk Level</th>
                 <th className="sec-hm-cell">Rollout Phase</th>
+                <th className="sec-hm-owner">Owner</th>
                 <th className="sec-hm-action"></th>
               </tr>
             </thead>
             <tbody>
-              {SEC_SYSTEMS.map((s) => (
-                <React.Fragment key={s.name}>
-                  <tr
-                    className={`sec-hm-row ${expanded === s.name ? 'sec-hm-row-open' : ''} ${s.inactive ? 'sec-hm-row-inactive' : ''}`}
-                    onClick={() => setExpanded(expanded === s.name ? null : s.name)}>
-                    <td className="sec-hm-system-cell">
-                      <span className="sec-hm-name">{s.name}</span>
-                    </td>
-                    <td className="sec-hm-cat-cell">{s.category}</td>
-                    <td className="sec-hm-cell-val">
-                      <span className="sec-hm-dot" style={{ background: MFA_ST[s.mfa]?.dot }} />
-                      <span className="sec-hm-label" style={{ color: MFA_ST[s.mfa]?.fg }}>{MFA_ST[s.mfa]?.label}</span>
-                    </td>
-                    <td className="sec-hm-cell-val">
-                      <span className="sec-hm-dot" style={{ background: MFA_ST[s.sso]?.dot }} />
-                      <span className="sec-hm-label" style={{ color: MFA_ST[s.sso]?.fg }}>{MFA_ST[s.sso]?.label}</span>
-                    </td>
-                    <td className="sec-hm-cell-val">
-                      <span className="sec-badge sec-badge-sm" style={{ background: RISK_ST[s.risk]?.bg, color: RISK_ST[s.risk]?.fg }}>
-                        {RISK_ST[s.risk]?.label}
-                      </span>
-                    </td>
-                    <td className="sec-hm-cell-val">
-                      <span className="sec-badge sec-badge-sm" style={{ background: ROLLOUT_ST[s.rollout]?.bg, color: ROLLOUT_ST[s.rollout]?.fg }}>
-                        {ROLLOUT_ST[s.rollout]?.label}
-                      </span>
-                    </td>
-                    <td className="sec-hm-chevron">{expanded === s.name ? '▲' : '▼'}</td>
-                  </tr>
-                  {expanded === s.name && (
-                    <tr className="sec-hm-detail-row">
-                      <td colSpan={7}>
-                        <div className="sec-hm-detail">
-                          <div className="sec-hm-detail-grid">
-                            <div className="sec-hm-detail-item">
-                              <div className="sec-hm-detail-label">MFA Notes</div>
-                              <div className="sec-hm-detail-body">{s.mfaNotes}</div>
-                            </div>
-                            <div className="sec-hm-detail-item">
-                              <div className="sec-hm-detail-label">SSO Notes</div>
-                              <div className="sec-hm-detail-body">{s.ssoNotes}</div>
-                            </div>
-                            <div className="sec-hm-detail-item sec-hm-action-item">
-                              <div className="sec-hm-detail-label">Recommended Action</div>
-                              <div className="sec-hm-detail-body sec-hm-action-body">{s.action}</div>
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </React.Fragment>
-              ))}
+              {allMFASystems
+                .filter((s) => !secOverrides[s.name]?.deleted)
+                .filter((s) => !filterOwner || !filterOwner.length || filterOwner.some((id) => (secOwners[s.name] || []).includes(id)))
+                .map((s) => {
+                  const ov = secOverrides[s.name] || {};
+                  const mfaNotes = ov.mfaNotes != null ? ov.mfaNotes : s.mfaNotes;
+                  const ssoNotes = ov.ssoNotes != null ? ov.ssoNotes : s.ssoNotes;
+                  const action   = ov.action   != null ? ov.action   : s.action;
+                  const isEditing = editingRow === s.name;
+                  return (
+                    <React.Fragment key={s.name}>
+                      <tr
+                        className={`sec-hm-row ${expanded === s.name ? 'sec-hm-row-open' : ''} ${s.inactive ? 'sec-hm-row-inactive' : ''}`}
+                        onClick={() => { if (!isEditing) setExpanded(expanded === s.name ? null : s.name); }}>
+                        <td className="sec-hm-system-cell">
+                          <span className="sec-hm-name">{s.name}</span>
+                        </td>
+                        <td className="sec-hm-cat-cell">{s.category}</td>
+                        <td className="sec-hm-cell-val">
+                          <SecPicker
+                            value={ov.mfaStatus ?? s.mfa}
+                            options={['full', 'partial', 'none', 'unknown']}
+                            config={MFA_ST}
+                            onChange={(v) => onSecOverrideChange(s.name, { mfaStatus: v })} />
+                        </td>
+                        <td className="sec-hm-cell-val">
+                          <SecPicker
+                            value={ov.ssoStatus ?? s.sso}
+                            options={['full', 'partial', 'none', 'unknown']}
+                            config={MFA_ST}
+                            onChange={(v) => onSecOverrideChange(s.name, { ssoStatus: v })} />
+                        </td>
+                        <td className="sec-hm-cell-val">
+                          <SecPicker
+                            value={ov.riskLevel ?? s.risk}
+                            options={['critical', 'high', 'medium', 'low']}
+                            config={RISK_ST}
+                            onChange={(v) => onSecOverrideChange(s.name, { riskLevel: v })} />
+                        </td>
+                        <td className="sec-hm-cell-val">
+                          <span className="sec-badge sec-badge-sm" style={{ background: ROLLOUT_ST[s.rollout]?.bg, color: ROLLOUT_ST[s.rollout]?.fg }}>
+                            {ROLLOUT_ST[s.rollout]?.label}
+                          </span>
+                        </td>
+                        <td className="sec-hm-owner-cell">
+                          <SecOwnerPicker
+                            owners={secOwners[s.name] || []}
+                            onChange={(ids) => onSecOwnerChange(s.name, ids)} />
+                        </td>
+                        <td className="sec-hm-chevron">{expanded === s.name ? '▲' : '▼'}</td>
+                      </tr>
+                      {expanded === s.name && (
+                        <tr className="sec-hm-detail-row">
+                          <td colSpan={8}>
+                            {isEditing ? (
+                              <div className="sec-hm-detail sec-hm-detail-editing">
+                                <div className="sec-hm-detail-grid">
+                                  <div className="sec-hm-detail-item">
+                                    <div className="sec-hm-detail-label">MFA Notes</div>
+                                    <textarea className="sec-edit-textarea" value={editDraft.mfaNotes}
+                                      onChange={(e) => setEditDraft((d) => ({ ...d, mfaNotes: e.target.value }))}
+                                      onClick={(e) => e.stopPropagation()} />
+                                  </div>
+                                  <div className="sec-hm-detail-item">
+                                    <div className="sec-hm-detail-label">SSO Notes</div>
+                                    <textarea className="sec-edit-textarea" value={editDraft.ssoNotes}
+                                      onChange={(e) => setEditDraft((d) => ({ ...d, ssoNotes: e.target.value }))}
+                                      onClick={(e) => e.stopPropagation()} />
+                                  </div>
+                                  <div className="sec-hm-detail-item sec-hm-action-item">
+                                    <div className="sec-hm-detail-label">Recommended Action</div>
+                                    <textarea className="sec-edit-textarea" value={editDraft.action}
+                                      onChange={(e) => setEditDraft((d) => ({ ...d, action: e.target.value }))}
+                                      onClick={(e) => e.stopPropagation()} />
+                                  </div>
+                                </div>
+                                <div className="sec-detail-actions" onClick={(e) => e.stopPropagation()}>
+                                  <button className="sec-btn-save" onClick={saveEdit}>Save</button>
+                                  <button className="sec-btn-cancel" onClick={cancelEdit}>Cancel</button>
+                                  <button className="sec-btn-delete" onClick={() => deleteRow(s)}>🗑 Remove system</button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="sec-hm-detail">
+                                <div className="sec-hm-detail-grid">
+                                  <div className="sec-hm-detail-item">
+                                    <div className="sec-hm-detail-label">MFA Notes</div>
+                                    <div className="sec-hm-detail-body">{mfaNotes}</div>
+                                  </div>
+                                  <div className="sec-hm-detail-item">
+                                    <div className="sec-hm-detail-label">SSO Notes</div>
+                                    <div className="sec-hm-detail-body">{ssoNotes}</div>
+                                  </div>
+                                  <div className="sec-hm-detail-item sec-hm-action-item">
+                                    <div className="sec-hm-detail-label">Recommended Action</div>
+                                    <div className="sec-hm-detail-body sec-hm-action-body">{action}</div>
+                                  </div>
+                                </div>
+                                <div className="sec-detail-actions" onClick={(e) => e.stopPropagation()}>
+                                  <button className="sec-btn-edit" onClick={() => startEdit(s)}>✎ Edit notes</button>
+                                  <button className="sec-btn-delete" onClick={() => deleteRow(s)}>🗑 Remove system</button>
+                                </div>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              {addingMFA && (
+                <tr className="sec-hm-add-row" onClick={e => e.stopPropagation()}>
+                  <td className="sec-hm-system-cell">
+                    <input className="sec-add-input" placeholder="System name *"
+                      value={addDraft.name} onChange={e => setAddDraft(d => ({...d, name: e.target.value}))}
+                      autoFocus onKeyDown={e => e.key === 'Enter' && saveMFASystem()} />
+                  </td>
+                  <td>
+                    <input className="sec-add-input" placeholder="Category (e.g. Finance / HR)"
+                      value={addDraft.category} onChange={e => setAddDraft(d => ({...d, category: e.target.value}))} />
+                  </td>
+                  <td className="sec-hm-cell-val">
+                    <SecPicker value={addDraft.mfa} options={['full','partial','none','unknown']} config={MFA_ST} onChange={v => setAddDraft(d => ({...d, mfa: v}))} />
+                  </td>
+                  <td className="sec-hm-cell-val">
+                    <SecPicker value={addDraft.sso} options={['full','partial','none','unknown']} config={MFA_ST} onChange={v => setAddDraft(d => ({...d, sso: v}))} />
+                  </td>
+                  <td className="sec-hm-cell-val">
+                    <SecPicker value={addDraft.risk} options={['critical','high','medium','low']} config={RISK_ST} onChange={v => setAddDraft(d => ({...d, risk: v}))} />
+                  </td>
+                  <td className="sec-hm-cell-val">
+                    <select className="sec-add-select" value={addDraft.rollout} onChange={e => setAddDraft(d => ({...d, rollout: e.target.value}))}>
+                      {Object.entries(ROLLOUT_ST).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                    </select>
+                  </td>
+                  <td></td>
+                  <td className="sec-hm-add-actions">
+                    <button className="sec-btn-save" onClick={saveMFASystem} disabled={!addDraft.name.trim()}>Add</button>
+                    <button className="sec-btn-cancel" onClick={() => setAddingMFA(false)}>✕</button>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
+        </div>
+        <div className="sec-add-system-bar">
+          <button className="sec-add-system-btn" onClick={() => { setAddingMFA(!addingMFA); setAddDraft({ name: '', category: '', mfa: 'unknown', sso: 'unknown', risk: 'medium', rollout: 'validate' }); }}>
+            {addingMFA ? '✕ Cancel' : '+ Add system'}
+          </button>
         </div>
       </div>
 
@@ -527,12 +1423,76 @@ const MFAHeatmap = () => {
           </div>
         </div>
       </div>
+
+      {/* ── GW User Modal ── */}
+      {gwModal && activeGWUsers.length > 0 && (
+        <GWUserModal
+          users={activeGWUsers}
+          filter={gwModal}
+          search={gwSearch}
+          onSearchChange={setGwSearch}
+          methodMap={methodMap}
+          methodsStatus={methodsStatus}
+          onReconnect={connectGoogle}
+          onClose={() => { setGwModal(null); setGwSearch(''); }}
+        />
+      )}
     </div>
   );
 };
 
 // ── SSO Strategy Section ─────────────────────────────────────────────────────
-const SSOStrategy = () => {
+const SSOStrategy = ({ secOwners, onSecOwnerChange, secOverrides, onSecOverrideChange, filterOwner, userSecSystems, onAddUserSystem, onDeleteUserSystem }) => {
+  const [editSSORow, setEditSSORow] = React.useState(null);
+  const [editSSODraft, setEditSSODraft] = React.useState('');
+  const [addingSSO, setAddingSSO] = React.useState(false);
+  const [addSSODraft, setAddSSODraft] = React.useState({ name: '', sso: 'unknown', protocol: '', notes: '' });
+
+  // Merge hardcoded + user-added SSO systems
+  // Note: for sso_compat rows, `category` stores the protocol and `mfa_notes` stores the notes
+  const allSSOCompat = [
+    ...SSO_COMPAT,
+    ...(userSecSystems || []).filter(s => s.system_type === 'sso_compat').map(s => ({
+      name:     s.name,
+      sso:      s.sso_status || 'unknown',
+      protocol: s.category   || '?',
+      notes:    s.mfa_notes  || '',
+      _userAdded: true, _id: s.id,
+    })),
+  ];
+
+  const saveSSOSystem = () => {
+    if (!addSSODraft.name.trim()) return;
+    const row = {
+      id: 'usr-' + Date.now(), system_type: 'sso_compat',
+      name:       addSSODraft.name.trim(),
+      sso_status: addSSODraft.sso,
+      category:   addSSODraft.protocol.trim() || '?',   // reuse 'category' column for protocol
+      mfa_notes:  addSSODraft.notes.trim(),              // reuse 'mfa_notes' column for notes
+    };
+    onAddUserSystem(row);
+    setAddingSSO(false);
+    setAddSSODraft({ name: '', sso: 'unknown', protocol: '', notes: '' });
+  };
+
+  const startSSOEdit = (s) => {
+    const ov = secOverrides[s.name] || {};
+    setEditSSODraft(ov.notes != null ? ov.notes : s.notes);
+    setEditSSORow(s.name);
+  };
+  const saveSSOEdit = () => {
+    onSecOverrideChange(editSSORow, { notes: editSSODraft });
+    setEditSSORow(null);
+  };
+  const deleteSSORow = (s) => {
+    const label = typeof s === 'string' ? s : s.name;
+    const msg   = s._userAdded ? `Remove "${label}"?` : `Remove "${label}" from the SSO compatibility list?`;
+    if (confirm(msg)) {
+      onSecOverrideChange(label, { deleted: true });
+      if (s._userAdded && onDeleteUserSystem) onDeleteUserSystem(s._id);
+      if (editSSORow === label) setEditSSORow(null);
+    }
+  };
   return (
     <div className="sec-section">
       <div className="sec-block">
@@ -588,27 +1548,94 @@ const SSOStrategy = () => {
                 <th className="sec-hm-system">System</th>
                 <th className="sec-hm-cell">Google SSO Status</th>
                 <th className="sec-hm-cell">Protocol</th>
+                <th className="sec-hm-owner">Owner</th>
                 <th>Notes &amp; Action</th>
               </tr>
             </thead>
             <tbody>
-              {SSO_COMPAT.map((s) => {
-                const st = SSO_ST[s.sso];
-                return (
-                  <tr key={s.name} className="sec-hm-row">
-                    <td className="sec-hm-system-cell"><span className="sec-hm-name">{s.name}</span></td>
-                    <td className="sec-hm-cell-val">
-                      <span className="sec-badge sec-badge-sm" style={{ background: st.bg, color: st.fg }}>{st.label}</span>
-                    </td>
-                    <td className="sec-hm-cell-val">
-                      <span className="sec-protocol">{s.protocol}</span>
-                    </td>
-                    <td className="sec-hm-notes">{s.notes}</td>
-                  </tr>
-                );
-              })}
+              {allSSOCompat
+                .filter((s) => !secOverrides[s.name]?.deleted)
+                .filter((s) => !filterOwner || !filterOwner.length || filterOwner.some((id) => (secOwners[s.name] || []).includes(id)))
+                .map((s) => {
+                  const ov = secOverrides[s.name] || {};
+                  const notes = ov.notes != null ? ov.notes : s.notes;
+                  const isEditing = editSSORow === s.name;
+                  return (
+                    <tr key={s.name} className="sec-hm-row">
+                      <td className="sec-hm-system-cell"><span className="sec-hm-name">{s.name}</span></td>
+                      <td className="sec-hm-cell-val">
+                        <SecPicker
+                          value={ov.ssoCompatStatus ?? s.sso}
+                          options={['native', 'yes', 'upgrade', 'no', 'unknown']}
+                          config={SSO_ST}
+                          onChange={(v) => onSecOverrideChange(s.name, { ssoCompatStatus: v })} />
+                      </td>
+                      <td className="sec-hm-cell-val">
+                        <span className="sec-protocol">{s.protocol}</span>
+                      </td>
+                      <td className="sec-hm-owner-cell">
+                        <SecOwnerPicker
+                          owners={secOwners[s.name] || []}
+                          onChange={(ids) => onSecOwnerChange(s.name, ids)} />
+                      </td>
+                      <td className="sec-hm-notes">
+                        {isEditing ? (
+                          <div className="sec-inline-edit" onClick={(e) => e.stopPropagation()}>
+                            <textarea className="sec-edit-textarea" value={editSSODraft}
+                              onChange={(e) => setEditSSODraft(e.target.value)} />
+                            <div className="sec-inline-edit-actions">
+                              <button className="sec-btn-save" onClick={saveSSOEdit}>Save</button>
+                              <button className="sec-btn-cancel" onClick={() => setEditSSORow(null)}>Cancel</button>
+                              <button className="sec-btn-delete" onClick={() => deleteSSORow(s)}>🗑 Remove</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="sec-notes-view">
+                            <span className="sec-notes-text">{notes}</span>
+                            <span className="sec-notes-actions">
+                              <button className="sec-btn-icon" title="Edit notes" onClick={(e) => { e.stopPropagation(); startSSOEdit(s); }}>✎</button>
+                              <button className="sec-btn-icon sec-btn-icon-del" title="Remove row" onClick={(e) => { e.stopPropagation(); deleteSSORow(s); }}>🗑</button>
+                            </span>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              {addingSSO && (
+                <tr className="sec-hm-add-row" onClick={e => e.stopPropagation()}>
+                  <td className="sec-hm-system-cell">
+                    <input className="sec-add-input" placeholder="System name *"
+                      value={addSSODraft.name} onChange={e => setAddSSODraft(d => ({...d, name: e.target.value}))}
+                      autoFocus onKeyDown={e => e.key === 'Enter' && saveSSOSystem()} />
+                  </td>
+                  <td className="sec-hm-cell-val">
+                    <SecPicker value={addSSODraft.sso} options={['native','yes','upgrade','no','unknown']} config={SSO_ST} onChange={v => setAddSSODraft(d => ({...d, sso: v}))} />
+                  </td>
+                  <td className="sec-hm-cell-val">
+                    <input className="sec-add-input" placeholder="Protocol (e.g. SAML 2.0)"
+                      value={addSSODraft.protocol} onChange={e => setAddSSODraft(d => ({...d, protocol: e.target.value}))} />
+                  </td>
+                  <td></td>
+                  <td>
+                    <div className="sec-hm-add-actions">
+                      <input className="sec-add-input sec-add-input-wide" placeholder="Notes / action (optional)"
+                        value={addSSODraft.notes} onChange={e => setAddSSODraft(d => ({...d, notes: e.target.value}))} />
+                      <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                        <button className="sec-btn-save" onClick={saveSSOSystem} disabled={!addSSODraft.name.trim()}>Add</button>
+                        <button className="sec-btn-cancel" onClick={() => setAddingSSO(false)}>✕</button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
+        </div>
+        <div className="sec-add-system-bar">
+          <button className="sec-add-system-btn" onClick={() => { setAddingSSO(!addingSSO); setAddSSODraft({ name: '', sso: 'unknown', protocol: '', notes: '' }); }}>
+            {addingSSO ? '✕ Cancel' : '+ Add system'}
+          </button>
         </div>
         <div className="sec-sso-note">
           <strong>For systems that can't do Google SSO</strong> (QBO, Therap, and those needing validation): the fallback is strong unique passwords stored in a team password manager (1Password Teams or Bitwarden) combined with mandatory 2FA where available. This provides comparable protection without requiring SSO integration.
@@ -754,13 +1781,46 @@ const AccessMgmt = () => {
 };
 
 // ── SecurityHub ──────────────────────────────────────────────────────────────
-const SecurityHub = () => {
+const SecurityHub = ({ OwnerFilter }) => {
   const [section, setSection] = React.useState('mfa');
+  const [secOwners, setSecOwners] = React.useState({});
+  const [secOverrides, setSecOverrides] = React.useState({});
+  const [filterOwner, setFilterOwner] = React.useState([]);
+  const [userSecSystems, setUserSecSystems] = React.useState([]);
+
+  React.useEffect(() => {
+    window.SupabaseDB.loadSecOwners().then(setSecOwners).catch(console.error);
+    window.SupabaseDB.loadSecOverrides().then(setSecOverrides).catch(console.error);
+    window.SupabaseDB.loadUserSecSystems().then(setUserSecSystems).catch(console.error);
+  }, []);
+
+  const onSecOwnerChange = (systemName, ids) => {
+    setSecOwners((prev) => ({ ...prev, [systemName]: ids }));
+    window.SupabaseDB.upsertSecOwner(systemName, ids);
+  };
+
+  const onSecOverrideChange = (systemName, patch) => {
+    setSecOverrides((prev) => ({ ...prev, [systemName]: { ...(prev[systemName] || {}), ...patch } }));
+    window.SupabaseDB.upsertSecOverride(systemName, patch);
+  };
+
+  const onAddUserSystem = (row) => {
+    window.SupabaseDB.insertUserSecSystem(row).catch(console.error);
+    setUserSecSystems((prev) => [...prev, row]);
+  };
+
+  const onDeleteUserSystem = (id) => {
+    window.SupabaseDB.deleteUserSecSystem(id).catch(console.error);
+    setUserSecSystems((prev) => prev.filter((s) => s.id !== id));
+  };
 
   const SECTIONS = [
     { id: 'mfa',    label: 'MFA',            sub: 'Heatmap + Rollout' },
     { id: 'sso',    label: 'SSO Strategy',   sub: 'Provider options' },
     { id: 'access', label: 'Access Mgmt',    sub: 'On/off + RBAC + Cleanup' },
+    { id: 'team',   label: 'Team 2FA',       sub: 'Manager accountability' },
+    { id: 'plan',   label: 'Impl. Plan',     sub: 'MFA + SSO roadmap' },
+    { id: 'sop',    label: 'SOP Review',     sub: 'Onboarding & offboarding' },
   ];
 
   return (
@@ -781,11 +1841,20 @@ const SecurityHub = () => {
         ))}
       </nav>
 
-      {section === 'mfa'    && <MFAHeatmap />}
-      {section === 'sso'    && <SSOStrategy />}
+      {(section === 'mfa' || section === 'sso') && OwnerFilter && (
+        <OwnerFilter selected={filterOwner} onChange={setFilterOwner} />
+      )}
+
+      {section === 'mfa'    && <MFAHeatmap    secOwners={secOwners} onSecOwnerChange={onSecOwnerChange} secOverrides={secOverrides} onSecOverrideChange={onSecOverrideChange} filterOwner={filterOwner} userSecSystems={userSecSystems} onAddUserSystem={onAddUserSystem} onDeleteUserSystem={onDeleteUserSystem} />}
+      {section === 'sso'    && <SSOStrategy   secOwners={secOwners} onSecOwnerChange={onSecOwnerChange} secOverrides={secOverrides} onSecOverrideChange={onSecOverrideChange} filterOwner={filterOwner} userSecSystems={userSecSystems} onAddUserSystem={onAddUserSystem} onDeleteUserSystem={onDeleteUserSystem} />}
       {section === 'access' && <AccessMgmt />}
+      {section === 'team'   && <window.TeamCompliance />}
+      {section === 'plan'   && <window.SecurityPlan />}
+      {section === 'sop'    && <window.SopReview />}
     </div>
   );
 };
 
-window.SecurityHub = SecurityHub;
+window.GW_METHOD_LABELS = GW_METHOD_LABELS;
+window.SEC_SYSTEMS     = SEC_SYSTEMS;      // exported for SecurityPlan
+window.SecurityHub     = SecurityHub;

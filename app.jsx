@@ -102,6 +102,18 @@ const UserPicker = ({ currentUser, setCurrentUser }) => {
   );
 };
 
+const SignOutButton = () => {
+  const session = window.__authSession;
+  if (!session) return null;
+  return (
+    <div className="signout-wrap">
+      <span className="signout-email">{session.email}</span>
+      <button className="signout-btn" onClick={() => window.BPAuth.signOut('/login.html')}
+              title="Sign out">Sign out</button>
+    </div>
+  );
+};
+
 const Header = ({ tasks, today, focusWs, setFocusWs, currentUser, setCurrentUser }) => {
   const totalDays = window.totalDays;
   const dayIn = Math.max(0, Math.min(totalDays, window.dayOfEngagement(today)));
@@ -122,11 +134,11 @@ const Header = ({ tasks, today, focusWs, setFocusWs, currentUser, setCurrentUser
           <h1 className="hdr-title">Engagement Tracker</h1>
           <div className="hdr-subtitle">
             {window.fmtFull(window.ENGAGEMENT_START)} → {window.fmtFull(window.ENGAGEMENT_END)} ·
-            <span className="hdr-fee"> $14,500 flat fee</span> ·
             <span className="hdr-sm"> Success Manager: Lane Elmer</span>
           </div>
         </div>
         <div className="hdr-right">
+          <SignOutButton />
           <UserPicker currentUser={currentUser} setCurrentUser={setCurrentUser} />
           <div className="hdr-stats">
           <StatCard label="Day"
@@ -158,6 +170,9 @@ const ADMIN_KEY   = 'brightpath-admin-v1';
 const USER_KEY    = 'brightpath-user-v1';
 
 const loadCurrentUser = () => {
+  // If a session mapped this email to a personId, use that
+  const session = window.__authSession;
+  if (session && session.personId) return session.personId;
   try { return localStorage.getItem(USER_KEY) || ''; } catch (e) { return ''; }
 };
 const saveCurrentUser = (id) => {
@@ -196,13 +211,15 @@ const applyOverlay = (overlay) => {
     .map((t) => {
       const ao = taskOvr[t.id] || {};
       const o  = overlay[t.id] || {};
+      const dueRaw = o.due !== undefined ? o.due : (ao.due !== undefined ? ao.due : null);
       return {
         ...t,
         ...ao,
-        due: ao.due ? new Date(ao.due) : (t.due ? new Date(t.due) : null),
-        owner_s360:   ao.owner_s360   || t.owner_s360,
-        owner_client: ao.owner_client || t.owner_client,
-        status:       o.status || ao.status || t.status,
+        due: dueRaw ? new Date(dueRaw) : (t.due ? new Date(t.due) : null),
+        owner_s360:   o.owner_s360   || ao.owner_s360   || t.owner_s360,
+        owner_client: o.owner_client || ao.owner_client || t.owner_client,
+        priority:     o.priority     || ao.priority     || t.priority,
+        status:       o.status       || ao.status       || t.status,
         comments:     [...(t.comments || []), ...(o.comments || [])],
         statusHistory: o.statusHistory || [],
       };
@@ -215,6 +232,34 @@ const loadWeekly = () => {
 };
 const saveWeekly = (s) => { try { localStorage.setItem(WEEKLY_KEY, JSON.stringify(s)); } catch (e) {} };
 
+// ── Owner filter strip ───────────────────────────────────────────────────────
+const OwnerFilter = ({ selected, onChange }) => (
+  <div className="owner-filter-bar">
+    <span className="owner-filter-label">Owner</span>
+    <div className="owner-filter-chips">
+      {window.PEOPLE_LIST.map((p) => {
+        const active = selected.includes(p.id);
+        const bg = p.org === 's360' ? '#0f172a' : '#7c2d12';
+        return (
+          <button key={p.id}
+            className={`owner-filter-chip ${active ? 'owner-filter-chip-on' : ''}`}
+            title={`${p.name} · ${p.role}`}
+            onClick={() => onChange(active ? selected.filter((x) => x !== p.id) : [...selected, p.id])}>
+            <span className="avatar" style={{ width: 26, height: 26, fontSize: 9.5,
+              background: active ? bg : '#e2e8f0', color: active ? '#fff' : '#64748b' }}>
+              {p.initials}
+            </span>
+          </button>
+        );
+      })}
+      {selected.length > 0 && (
+        <button className="owner-filter-clear" onClick={() => onChange([])}>× clear</button>
+      )}
+    </div>
+  </div>
+);
+window.OwnerFilter = OwnerFilter;
+
 // ── Main App ────────────────────────────────────────────────────────────────
 const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
   "grouping": "workstream",
@@ -225,20 +270,119 @@ const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
 
 function App() {
   const [t, setTweak] = window.useTweaks(TWEAK_DEFAULTS);
-  const [overlay, setOverlay] = React.useState(loadOverlay);
+  const [overlay, setOverlay] = React.useState(loadOverlay); // localStorage seed — replaced by Supabase on mount
+  const [userTasks, setUserTasks] = React.useState([]);
+  const [dbReady, setDbReady] = React.useState(false);
   const [weekly, setWeekly] = React.useState(loadWeekly);
+  const [weeklyMeta, setWeeklyMeta] = React.useState({}); // { [weekIdx]: { updatedAt, updatedBy } }
   const [currentUser, setCurrentUser] = React.useState(loadCurrentUser);
   const [expandedIds, setExpandedIds] = React.useState(new Set());
   const [focusWs, setFocusWs] = React.useState(null);
+  const [filterOwner, setFilterOwner] = React.useState([]);
   const [tab, setTab] = React.useState('roadmap'); // 'roadmap' | 'workplan' | 'weekly' | 'security'
 
   // Effective today: real today + tweakable demo offset
-  const realToday = new Date(2026, 4, 8); // May 8, 2026
+  const realToday = new Date(); // actual current date
   const today = window.addDays(realToday, t.demoToday || 0);
   const currentWeekIdx = Math.max(0, Math.min(12, Math.floor(window.dayOfEngagement(today) / 7)));
   const [weekIdx, setWeekIdx] = React.useState(currentWeekIdx);
 
-  const tasks = React.useMemo(() => applyOverlay(overlay), [overlay]);
+  const tasks = React.useMemo(() => {
+    const base = applyOverlay(overlay);
+    const user = userTasks.map((t) => ({
+      ...t,
+      due:          t.due ? new Date(t.due) : null,
+      comments:     (overlay[t.id] || {}).comments     || [],
+      status:       (overlay[t.id] || {}).status       || t.status,
+      priority:     (overlay[t.id] || {}).priority     || t.priority,
+      owner_s360:   (overlay[t.id] || {}).owner_s360   || t.owner_s360,
+      owner_client: (overlay[t.id] || {}).owner_client || t.owner_client,
+      statusHistory: (overlay[t.id] || {}).statusHistory || [],
+    }));
+    return [...base, ...user];
+  }, [overlay, userTasks]);
+
+  // ── Load from Supabase on mount, then subscribe to real-time ──────────────
+  React.useEffect(() => {
+    Promise.all([
+      window.SupabaseDB.loadOverlay(),
+      window.SupabaseDB.loadUserTasks(),
+      window.SupabaseDB.loadWeeklySnaps(),
+    ]).then(([dbOverlay, dbUserTasks, { snaps: dbSnaps, meta: dbMeta }]) => {
+        setOverlay(dbOverlay);
+        saveOverlay(dbOverlay);
+        setUserTasks(dbUserTasks);
+        // Merge: Supabase wins over localStorage for any week that has been saved
+        setWeekly((prev) => ({ ...prev, ...dbSnaps }));
+        setWeeklyMeta(dbMeta);
+        setDbReady(true);
+      })
+      .catch((err) => {
+        console.warn('[Supabase] load failed, using local cache:', err.message);
+        setDbReady(true);
+      });
+  }, []);
+
+  React.useEffect(() => {
+    if (!dbReady) return;
+    window.SupabaseDB.subscribe(
+      // another user changed a task field
+      (row) => {
+        setOverlay((prev) => ({
+          ...prev,
+          [row.task_id]: {
+            ...(prev[row.task_id] || {}),
+            ...(row.status   != null && { status:   row.status }),
+            ...(row.priority != null && { priority: row.priority }),
+            due:           row.due,
+            owner_s360:    row.owner_s360    || [],
+            owner_client:  row.owner_client  || [],
+            statusHistory: row.status_history || [],
+          },
+        }));
+      },
+      // another user posted a comment
+      (row) => {
+        setOverlay((prev) => {
+          const existing = (prev[row.task_id] || {}).comments || [];
+          if (existing.some((c) => c.when === row.created_at && c.who === row.who)) return prev;
+          return {
+            ...prev,
+            [row.task_id]: {
+              ...(prev[row.task_id] || {}),
+              comments: [...existing, { who: row.who, when: row.created_at, text: row.text }],
+            },
+          };
+        });
+      },
+      // another user added a new task
+      (row) => {
+        setUserTasks((prev) => {
+          if (prev.some((t) => t.id === row.id)) return prev;
+          return [...prev, {
+            id: row.id, ws: row.ws, title: row.title, subgroup: row.subgroup || null,
+            status: row.status || 'not_started', priority: row.priority || 'med',
+            due: null, owner_s360: row.owner_s360 || [], owner_client: row.owner_client || [],
+            comments: [], isMilestone: false, recurring: null, notes: '',
+          }];
+        });
+      },
+      // another user edited a task
+      (row) => {
+        setUserTasks((prev) => prev.map((t) => t.id === row.id ? { ...t, title: row.title } : t));
+      },
+      // another user deleted a task
+      (row) => {
+        setUserTasks((prev) => prev.filter((t) => t.id !== row.id));
+      },
+      // another user saved a weekly snapshot
+      (row) => {
+        if (!row || row.week_idx == null) return;
+        setWeekly((prev) => ({ ...prev, [row.week_idx]: row.snap_json || {} }));
+        setWeeklyMeta((prev) => ({ ...prev, [row.week_idx]: { updatedAt: row.updated_at, updatedBy: row.updated_by } }));
+      }
+    );
+  }, [dbReady]);
 
   React.useEffect(() => { saveOverlay(overlay); }, [overlay]);
   React.useEffect(() => { saveWeekly(weekly); }, [weekly]);
@@ -266,10 +410,44 @@ function App() {
           ];
         }
       }
+      window.SupabaseDB.upsertTask(id, merged); // persist to Supabase for all users
       return { ...prev, [id]: merged };
     });
   };
+  const onEditTask = (id, patch) => {
+    setUserTasks((prev) => prev.map((t) => t.id === id ? { ...t, ...patch } : t));
+    window.SupabaseDB.updateUserTask(id, patch);
+  };
+
+  const onDeleteTask = (id) => {
+    let removed;
+    setUserTasks((prev) => {
+      removed = prev.find((t) => t.id === id);
+      return prev.filter((t) => t.id !== id);
+    });
+    window.SupabaseDB.deleteUserTask(id).then((ok) => {
+      if (!ok && removed) {
+        // Roll back — Supabase delete failed
+        setUserTasks((prev) => [...prev, removed]);
+        alert('Could not delete the task. Please run the SQL fix in Supabase and try again.');
+      }
+    });
+  };
+
+  const onAddTask = ({ ws, title, subgroup }) => {
+    const id = `user-${Date.now()}`;
+    const task = {
+      id, ws, title, subgroup: subgroup || null,
+      status: 'not_started', priority: 'med', due: null,
+      owner_s360: [], owner_client: [], comments: [],
+      isMilestone: false, recurring: null, notes: '',
+    };
+    setUserTasks((prev) => [...prev, task]);
+    window.SupabaseDB.insertUserTask({ ...task, created_by: currentUser || null });
+  };
+
   const onAddComment = (id, comment) => {
+    window.SupabaseDB.insertComment(id, comment); // persist to Supabase for all users
     setOverlay((prev) => ({
       ...prev,
       [id]: {
@@ -350,6 +528,7 @@ function App() {
               <div className="seg">
                 <button className={t.grouping === 'workstream' ? 'on' : ''} onClick={() => setTweak('grouping', 'workstream')}>By Workstream</button>
                 <button className={t.grouping === 'phase' ? 'on' : ''} onClick={() => setTweak('grouping', 'phase')}>By Phase</button>
+                <button className={t.grouping === 'owner' ? 'on' : ''} onClick={() => setTweak('grouping', 'owner')}>By Owner</button>
               </div>
               <label className="check">
                 <input type="checkbox" checked={t.hideCompleted} onChange={(e) => setTweak('hideCompleted', e.target.checked)} />
@@ -367,6 +546,9 @@ function App() {
             onToggle={onToggle}
             onUpdate={onUpdate}
             onAddComment={onAddComment}
+            onAddTask={onAddTask}
+            onEditTask={onEditTask}
+            onDeleteTask={onDeleteTask}
             focusWs={focusWs}
             currentUser={currentUser}
             setCurrentUser={setCurrentUser}
@@ -382,28 +564,35 @@ function App() {
               <h2 className="section-title">Friday Update</h2>
             </div>
           </div>
+          <OwnerFilter selected={filterOwner} onChange={setFilterOwner} />
           <window.WeeklyProgress
-            tasks={tasks}
+            tasks={filterOwner.length ? tasks.filter((t) => filterOwner.some((id) => [...(t.owner_s360 || []), ...(t.owner_client || [])].includes(id))) : tasks}
             today={today}
             weekIdx={weekIdx}
             setWeekIdx={setWeekIdx}
             currentWeekIdx={currentWeekIdx}
             snapshots={weekly}
             setSnapshots={setWeekly}
+            weeklyMeta={weeklyMeta}
+            currentUser={currentUser}
+            onSaveSnap={async (snap) => {
+              const ok = await window.SupabaseDB.upsertWeeklySnap(weekIdx, snap, currentUser);
+              return ok;
+            }}
           />
         </section>
       )}
 
       {tab === 'security' && (
         <section className="section">
-          <window.SecurityHub />
+          <window.SecurityHub OwnerFilter={OwnerFilter} />
         </section>
       )}
 
       <footer className="ftr">
         <div>
           <strong>BrightPath × S360 Engagement Tracker</strong> ·
-          May 11 – Aug 9, 2026 · 90 days · $14,500 flat
+          May 11 – Aug 9, 2026 · 90 days
         </div>
         <div className="ftr-meta">
           Status &amp; comments persist locally · Demo today: <strong>{demoLabel}</strong>
@@ -413,7 +602,7 @@ function App() {
       <window.TweaksPanel title="Tweaks">
         <window.TweakSection label="View">
           <window.TweakRadio label="Group by" value={t.grouping}
-                             options={[{ value: 'workstream', label: 'Stream' }, { value: 'phase', label: 'Phase' }]}
+                             options={[{ value: 'workstream', label: 'Stream' }, { value: 'phase', label: 'Phase' }, { value: 'owner', label: 'Owner' }]}
                              onChange={(v) => setTweak('grouping', v)} />
           <window.TweakToggle label="Hide completed" value={t.hideCompleted} onChange={(v) => setTweak('hideCompleted', v)} />
         </window.TweakSection>

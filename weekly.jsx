@@ -9,13 +9,15 @@ const fmtDate = (d) =>
 // Empty snapshot template
 const emptySnap = () => ({
   narrative: { completed: '', onDeck: '', risks: '', wins: '', decisions: '' },
-  excludeIds: {},   // task ids the user manually removed from auto sections
-  extraIds:   {},   // task ids the user manually pinned into a section { taskId: 'completed'|'onDeck'|... }
-  customRisks: [],  // [{ id, text, owner }]
+  excludeIds: {},      // task ids the user manually removed from auto sections
+  extraIds:   {},      // task ids the user manually pinned into a section { taskId: 'completed'|'onDeck'|... }
+  customRisks:     [], // [{ id, text, owner }]
+  customWins:      [], // [{ id, text }]
+  customDecisions: [], // [{ id, text }]
   meetings: '',
 });
 
-function WeeklyProgress({ tasks, today, weekIdx, setWeekIdx, currentWeekIdx, snapshots, setSnapshots }) {
+function WeeklyProgress({ tasks, today, weekIdx, setWeekIdx, currentWeekIdx, snapshots, setSnapshots, onSaveSnap, weeklyMeta, currentUser }) {
   const week = window.WEEKS[weekIdx];
   const weekStart = week.start;
   const weekEnd = week.end;
@@ -39,10 +41,15 @@ function WeeklyProgress({ tasks, today, weekIdx, setWeekIdx, currentWeekIdx, sna
 
   const autoCompleted = tasks.filter((t) => {
     if (snap.excludeIds[t.id] === 'completed') return false;
-    const movedToDoneThisWeek = (t.statusHistory || []).some(
-      (h) => h.status === 'done' && inWeek(new Date(h.when))
-    );
-    const dueThisWeekAndDone = t.status === 'done' && inWeek(t.due);
+    if (t.status !== 'done') return false;
+    // Preferred: a status-change record timestamped inside this week
+    const doneHistory = (t.statusHistory || []).filter(h => h.status === 'done');
+    const movedToDoneThisWeek = doneHistory.some(h => inWeek(new Date(h.when)));
+    // Fallback: no history, OR all done-timestamps are pre-engagement (saved with wrong realToday)
+    // In either case, fall back to due date to place the task in the right week
+    const noValidHistory = !doneHistory.length ||
+      doneHistory.every(h => new Date(h.when) < window.ENGAGEMENT_START);
+    const dueThisWeekAndDone = noValidHistory && inWeek(t.due);
     return movedToDoneThisWeek || dueThisWeekAndDone;
   });
 
@@ -112,11 +119,17 @@ function WeeklyProgress({ tasks, today, weekIdx, setWeekIdx, currentWeekIdx, sna
     riskItems.forEach((t) => lines.push(`- ${t.title} — ${window.STATUS[t.status].label}`));
     snap.customRisks.forEach((r) => lines.push(`- ${r.text}${r.owner ? ` (${r.owner})` : ''}`));
     if (!riskItems.length && !snap.customRisks.length) lines.push(`- _None flagged._`);
-    if (snap.narrative.wins) {
-      lines.push(``, `## 🏆 Wins`, snap.narrative.wins);
+    const wins = snap.customWins || [];
+    const decisions = snap.customDecisions || [];
+    if (snap.narrative.wins || wins.length) {
+      lines.push(``, `## 🏆 Wins`);
+      if (snap.narrative.wins) lines.push(snap.narrative.wins);
+      wins.forEach((w) => lines.push(`- ${w.text}`));
     }
-    if (snap.narrative.decisions) {
-      lines.push(``, `## 🤝 Decisions needed`, snap.narrative.decisions);
+    if (snap.narrative.decisions || decisions.length) {
+      lines.push(``, `## 🤝 Decisions needed`);
+      if (snap.narrative.decisions) lines.push(snap.narrative.decisions);
+      decisions.forEach((d) => lines.push(`- ${d.text}`));
     }
     return lines.join('\n');
   };
@@ -136,6 +149,46 @@ function WeeklyProgress({ tasks, today, weekIdx, setWeekIdx, currentWeekIdx, sna
       updateSnap({ excludeIds: {}, extraIds: {} });
     }
   };
+
+  // ── Save to Supabase ───────────────────────────────────────────────────────
+  const [saveStatus, setSaveStatus] = React.useState('idle'); // 'idle' | 'saving' | 'saved' | 'error'
+  const [unsaved, setUnsaved]       = React.useState(false);
+
+  // Mark unsaved whenever snap changes (skip on first render)
+  const isFirstRender = React.useRef(true);
+  React.useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    setUnsaved(true);
+    setSaveStatus('idle');
+  }, [snap]);
+
+  // When week changes, reset unsaved indicator
+  React.useEffect(() => {
+    setUnsaved(false);
+    setSaveStatus('idle');
+    isFirstRender.current = true;
+  }, [week.idx]);
+
+  const onSave = async () => {
+    if (!onSaveSnap) return;
+    setSaveStatus('saving');
+    const ok = await onSaveSnap(snap);
+    if (ok === false) {
+      setSaveStatus('error');
+    } else {
+      setSaveStatus('saved');
+      setUnsaved(false);
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    }
+  };
+
+  const meta     = (weeklyMeta || {})[week.idx];
+  const savedBy  = meta ? meta.updatedBy : null;
+  const savedAt  = meta ? new Date(meta.updatedAt) : null;
+  const savedLabel = savedAt
+    ? savedAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' at ' +
+      savedAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+    : null;
 
   return (
     <div className="weekly">
@@ -192,6 +245,29 @@ function WeeklyProgress({ tasks, today, weekIdx, setWeekIdx, currentWeekIdx, sna
       <div className="wk-actions">
         <div className="wk-actions-l">
           <button className="btn-ghost" onClick={onRefresh}>↻ Re-pull from workplan</button>
+          {onSaveSnap && (
+            <div className="wk-save-wrap">
+              <button
+                className={`wk-save-btn${saveStatus === 'saved' ? ' wk-save-btn--saved' : ''}${saveStatus === 'error' ? ' wk-save-btn--error' : ''}`}
+                onClick={onSave}
+                disabled={saveStatus === 'saving'}
+              >
+                {saveStatus === 'saving' ? '⏳ Saving…'
+                  : saveStatus === 'saved' ? '✓ Saved'
+                  : saveStatus === 'error' ? '✗ Error — retry'
+                  : unsaved ? '💾 Save changes'
+                  : '💾 Save'}
+              </button>
+              {unsaved && saveStatus === 'idle' && (
+                <span className="wk-unsaved-dot" title="Unsaved changes" />
+              )}
+              {savedLabel && saveStatus !== 'saving' && (
+                <span className="wk-save-meta">
+                  Last saved {savedBy ? `by ${savedBy} · ` : ''}{savedLabel}
+                </span>
+              )}
+            </div>
+          )}
         </div>
         <div className="wk-actions-r">
           <button className="btn-ghost" onClick={onCopyMarkdown}>Copy as Markdown</button>
@@ -262,32 +338,90 @@ function WeeklyProgress({ tasks, today, weekIdx, setWeekIdx, currentWeekIdx, sna
 
       {/* ── Optional sections ─────────────────────────────────────────────── */}
       <div className="wk-extras">
-        <div className="wk-extra">
-          <div className="wk-extra-head">
-            <span className="wk-extra-icon">★</span>
-            <h4>Wins / highlights</h4>
+        <ExtraSection
+          icon="★"
+          title="Wins / highlights"
+          narrativeValue={snap.narrative.wins || ''}
+          onNarrativeChange={(v) => updateNarrative('wins', v)}
+          narrativePlaceholder="Narrative context — themes, positive feedback, momentum…"
+          items={snap.customWins || []}
+          inputPlaceholder="Add a win or highlight…"
+          onAdd={(text) => updateSnap({ customWins: [...(snap.customWins || []), { id: 'w' + Date.now(), text }] })}
+          onRemove={(id) => updateSnap({ customWins: (snap.customWins || []).filter((w) => w.id !== id) })}
+        />
+        <ExtraSection
+          icon="?"
+          title="Decisions needed"
+          narrativeValue={snap.narrative.decisions || ''}
+          onNarrativeChange={(v) => updateNarrative('decisions', v)}
+          narrativePlaceholder="Narrative context — escalations, direction needed…"
+          items={snap.customDecisions || []}
+          inputPlaceholder="Add a decision or ask…"
+          onAdd={(text) => updateSnap({ customDecisions: [...(snap.customDecisions || []), { id: 'd' + Date.now(), text }] })}
+          onRemove={(id) => updateSnap({ customDecisions: (snap.customDecisions || []).filter((d) => d.id !== id) })}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ── ExtraSection: Wins / Decisions — narrative + bullet items ─────────────
+function ExtraSection({ icon, title, narrativeValue, onNarrativeChange, narrativePlaceholder, items, inputPlaceholder, onAdd, onRemove }) {
+  const [adding, setAdding] = React.useState(false);
+  const [text, setText] = React.useState('');
+
+  const handleAdd = () => {
+    if (!text.trim()) return;
+    onAdd(text.trim());
+    setText('');
+    setAdding(false);
+  };
+
+  return (
+    <div className="wk-extra">
+      <div className="wk-extra-head">
+        <span className="wk-extra-icon">{icon}</span>
+        <h4>{title}</h4>
+        {items.length > 0 && <span className="wk-extra-count">{items.length}</span>}
+      </div>
+
+      <textarea
+        className="wk-narrative"
+        value={narrativeValue}
+        onChange={(e) => onNarrativeChange(e.target.value)}
+        placeholder={narrativePlaceholder}
+        rows={2}
+      />
+
+      {items.length > 0 && (
+        <ul className="wk-extra-items">
+          {items.map((item) => (
+            <li key={item.id} className="wk-extra-item">
+              <span className="wk-extra-item-dot" />
+              <span className="wk-extra-item-text">{item.text}</span>
+              <button className="wk-item-x" onClick={() => onRemove(item.id)} title="Remove">×</button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="wk-section-add">
+        {!adding ? (
+          <button className="wk-add-btn" onClick={() => setAdding(true)}>+ Add item</button>
+        ) : (
+          <div className="wk-add-risk">
+            <input
+              className="wk-add-input"
+              placeholder={inputPlaceholder}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') { setAdding(false); setText(''); } }}
+              autoFocus
+            />
+            <button className="wk-add-save" onClick={handleAdd} disabled={!text.trim()}>Add</button>
+            <button className="wk-add-cancel" onClick={() => { setAdding(false); setText(''); }}>Cancel</button>
           </div>
-          <textarea
-            className="wk-narrative"
-            value={snap.narrative.wins || ''}
-            onChange={(e) => updateNarrative('wins', e.target.value)}
-            placeholder="Moments worth calling out — quick wins, positive feedback, momentum…"
-            rows={3}
-          />
-        </div>
-        <div className="wk-extra">
-          <div className="wk-extra-head">
-            <span className="wk-extra-icon">?</span>
-            <h4>Decisions needed</h4>
-          </div>
-          <textarea
-            className="wk-narrative"
-            value={snap.narrative.decisions || ''}
-            onChange={(e) => updateNarrative('decisions', e.target.value)}
-            placeholder="Asks of the client — approvals, sign-offs, direction needed…"
-            rows={3}
-          />
-        </div>
+        )}
       </div>
     </div>
   );

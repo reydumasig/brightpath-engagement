@@ -69,11 +69,12 @@ const w = (n) => (n - 1) * 7;
 const e = (n) => n * 7 - 1; // end-of-week is inclusive last day
 
 const GANTT_BARS = [
-  // IT Security — front-loaded, with lighter tail through W3-4 finalization
-  { ws: 'sec',    label: 'Posture assessment',         d0: w(1),     d1: w(1) + 5,  taskIds: ['sec-baa', 'sec-1', 'sec-2', 'sec-mfa-ga'] },
-  { ws: 'sec',    label: 'SSO + MFA + playbook',       d0: w(1) + 2, d1: e(2),      taskIds: ['sec-4', 'sec-ou', 'sec-mfa-admin', 'sec-sso-assess', 'sec-3', 'sec-onboard-sop', 'sec-offboard-sop', 'sec-rbac-review', 'sec-cleanup-review', 'sec-superadmin', 'sec-rbac-tweaks', 'sec-cleanup-tweaks', 'sec-onboard-decide', 'sec-offboard-decide', 'sec-rbac-next', 'sec-cleanup-next', 'sec-onboard-comms', 'sec-offboard-comms', 'sec-onboard-impl', 'sec-offboard-impl', 'sec-5'] },
-  { ws: 'sec',    label: 'Roadmap delivered',          d0: w(2) + 3, d1: e(2),      taskIds: ['sec-6'] },
-  { ws: 'sec',    label: 'Quick-wins + finalization',  d0: w(2) + 4, d1: w(4) + 2,  taskIds: ['sec-7', 'sec-8', 'sec-mfa-dc', 'sec-sso-rollout', 'sec-mfa-other'], faded: true },
+  // IT Security — parallel sub-tracks
+  { ws: 'sec',    label: 'Posture assessment',        d0: w(1),     d1: w(1) + 5,  taskIds: ['sec-baa', 'sec-1', 'sec-2', 'sec-mfa-ga'] },
+  { ws: 'sec',    label: 'MFA',                       d0: w(1) + 1, d1: w(4) + 4,  taskIds: ['sec-4', 'sec-ou', 'sec-mfa-admin', 'sec-mfa-dc', 'sec-mfa-other'] },
+  { ws: 'sec',    label: 'SSO',                       d0: w(2),     d1: w(4) + 4,  taskIds: ['sec-sso-assess', 'sec-3', 'sec-sso-rollout', 'sec-8'] },
+  { ws: 'sec',    label: 'Access Mgmt / Security',    d0: w(1) + 3, d1: e(3),      taskIds: ['sec-onboard-sop', 'sec-offboard-sop', 'sec-onboard-decide', 'sec-offboard-decide', 'sec-onboard-comms', 'sec-offboard-comms', 'sec-onboard-impl', 'sec-offboard-impl', 'sec-superadmin', 'sec-rbac-review', 'sec-rbac-tweaks', 'sec-rbac-next', 'sec-cleanup-review', 'sec-cleanup-tweaks', 'sec-cleanup-next', 'sec-5', 'sec-7'] },
+  { ws: 'sec',    label: 'Roadmap delivered',         d0: w(2) + 3, d1: e(2),      taskIds: ['sec-6'] },
 
   // MOS — kicks W3, runs through W13
   { ws: 'mos',    label: 'Wireframe + scoping',        d0: w(3),     d1: e(4),      taskIds: ['mos-1', 'mos-2', 'mos-3', 'mos-4', 'mos-5', 'mos-6'] },
@@ -125,12 +126,6 @@ const TASKS = [
   T('eng-3', 'admin', 'Weekly Steer Co (ED, Dir of Services, QA/Training, IT)',
     null, ['LE'], ['BS', 'SN', 'LC', 'JPM', 'JE'], 'med',
     { recurring: 'Thursdays · 60 min' }),
-  T('eng-4', 'admin', 'Invoice 1 sent ($4,833.33 — due Aug 11)',
-    '2026-05-29', ['LE'], ['BS'], 'low'),
-  T('eng-5', 'admin', 'Invoice 2 sent ($4,833.33 — due Sep 11)',
-    '2026-06-30', ['LE'], ['BS'], 'low'),
-  T('eng-6', 'admin', 'Invoice 3 sent ($4,833.34 — due Oct 11)',
-    '2026-07-31', ['LE'], ['BS'], 'low'),
 
   // ── IT Security — General ─────────────────────────────────────────────────
   T('sec-baa', 'sec', 'BAA verification with Google Workspace',
@@ -151,8 +146,8 @@ const TASKS = [
     '2026-05-17', ['RD', 'MS'], ['JE', 'LC'], 'high',
     { status: 'in_progress', subgroup: 'mfa',
       notes: 'Assessment underway. Key findings to date: 2FA adoption at ~3% (7 of 219 users enrolled); 20+ security alerts in Admin Console; no phishing/DLP policies configured; 7 Super Admins (target: 3); no SSO enforced on any SaaS tool; legacy personal Google accounts in active use. Full report targeting May 17.' }),
-  T('sec-mfa-ga', 'sec', 'Google Authenticator review against systems',
-    '2026-05-13', ['MS', 'RD'], [], 'high',
+  T('sec-mfa-ga', 'sec', 'Google Authenticator installation guide — distribute to all users',
+    '2026-05-15', ['MS', 'RD'], ['JE'], 'high',
     { status: 'in_progress', subgroup: 'mfa',
       notes: 'Full picture of where Google Authenticator MFA will support across BrightPath\'s tech stack. Develop alternative strategies for systems that may not allow TOTP (govt portals, legacy HR systems, etc.).' }),
   T('sec-4', 'sec', 'MFA enforcement & recovery flow documentation',
@@ -176,12 +171,12 @@ const TASKS = [
       notes: 'For applicable systems. Covers JazzHR, When I Work, Zoho, QBO, DocuSign, Adobe Acrobat, Bill.com, Calendly, Indeed, LinkedIn Recruiter, Canva, Squarespace, and others confirmed to support TOTP MFA.' }),
 
   // ── IT Security — SSO ─────────────────────────────────────────────────────
-  T('sec-sso-assess', 'sec', 'SSO assessment across systems',
-    '2026-05-19', ['MS'], ['JE'], 'high',
+  T('sec-sso-assess', 'sec', 'Vendor follow-up — SSO assessment across systems',
+    '2026-05-15', ['MS'], ['JE'], 'high',
     { status: 'in_progress', subgroup: 'sso',
       notes: 'May need Jeremy to follow up with vendors as necessary (where Michael doesn\'t have authority).' }),
-  T('sec-3', 'sec', 'SSO standardization plan across SaaS',
-    '2026-05-22', ['RD'], ['LC', 'JE'], 'high',
+  T('sec-3', 'sec', 'SSO rollout proposal — deliver to Brandon',
+    '2026-05-20', ['RD'], ['LC', 'JE'], 'high',
     { status: 'in_progress', subgroup: 'sso',
       notes: 'SaaS inventory complete. Active tools in scope: QBO, Zoho CRM, Centrally HR, Therap EHR, Star Services LMS, JazzHR (ATS), When I Work, DocuSign, Adobe Acrobat, Bill.com, Alerus, Netstudy 2.0, Zizzl, Calendly, Indeed, LinkedIn Recruiter, Canva, Squarespace, Google Ads. Evaluating Google as IdP for SAML/SSO on each. Therap EHR highest risk — no SSO. Not in scope: AUZMOR (inactive), E-Verify (within Centrally HR, not in use).' }),
   T('sec-sso-rollout', 'sec', 'SSO rollout to all applicable users',
@@ -195,11 +190,11 @@ const TASKS = [
 
   // ── IT Security — Access Mgmt: Onboarding ─────────────────────────────────
   T('sec-onboard-sop', 'sec', 'Onboarding — SOP visualization & open items',
-    '2026-05-14', ['RD'], [], 'med',
+    '2026-05-20', ['RD'], [], 'med',
     { status: 'in_progress', subgroup: 'access-onboard',
       notes: 'Will require some coordination with Michael and Jeremy.' }),
-  T('sec-onboard-decide', 'sec', 'Onboarding — Decision on proposed changes',
-    '2026-05-19', [], ['BS'], 'med',
+  T('sec-onboard-decide', 'sec', 'Onboarding — Sign-off from Brandon',
+    '2026-05-21', [], ['BS'], 'med',
     { status: 'not_started', subgroup: 'access-onboard' }),
   T('sec-onboard-comms', 'sec', 'Onboarding — Communicate changes to affected parties',
     '2026-05-22', ['RD'], ['JE'], 'med',
@@ -214,11 +209,11 @@ const TASKS = [
 
   // ── IT Security — Access Mgmt: Offboarding ────────────────────────────────
   T('sec-offboard-sop', 'sec', 'Offboarding — SOP visualization & open items',
-    '2026-05-14', ['RD'], [], 'med',
+    '2026-05-20', ['RD'], [], 'med',
     { status: 'in_progress', subgroup: 'access-offboard',
       notes: 'Will require some coordination with Michael and Jeremy.' }),
-  T('sec-offboard-decide', 'sec', 'Offboarding — Decision on proposed changes',
-    '2026-05-19', [], ['BS'], 'med',
+  T('sec-offboard-decide', 'sec', 'Offboarding — Sign-off from Brandon',
+    '2026-05-21', [], ['BS'], 'med',
     { status: 'not_started', subgroup: 'access-offboard' }),
   T('sec-offboard-comms', 'sec', 'Offboarding — Communicate changes to affected parties',
     '2026-05-22', ['RD'], ['JE'], 'med',
@@ -238,8 +233,8 @@ const TASKS = [
   T('sec-rbac-tweaks', 'sec', 'RBAC — Proposal of any tweaks',
     '2026-05-18', ['RD'], [], 'med',
     { status: 'not_started', subgroup: 'access-rbac' }),
-  T('sec-rbac-next', 'sec', 'RBAC — Determine next steps & rollout',
-    '2026-05-19', ['RD'], ['JE'], 'med',
+  T('sec-rbac-next', 'sec', 'RBAC — Final alignment & rollout plan (Jeremy, Brandon, Rey)',
+    '2026-05-28', ['RD'], ['JE', 'BS'], 'med',
     { status: 'not_started', subgroup: 'access-rbac' }),
 
   // ── IT Security — Security Cleanup ───────────────────────────────────────
@@ -248,14 +243,15 @@ const TASKS = [
     { status: 'in_progress', subgroup: 'cleanup',
       notes: 'Quick wins identified: (1) 2FA on all Super Admin accounts, (2) disable legacy app passwords, (3) enable login audit alerts, (4) review and remove inactive user accounts (30+ day dormant). Items 3–4 in progress.' }),
   T('sec-cleanup-review', 'sec', 'Cleanup — Review of Jeremy\'s current proposal',
-    '2026-05-15', ['RD'], ['JE'], 'med',
+    '2026-06-01', ['RD'], ['JE'], 'med',
     { status: 'not_started', subgroup: 'cleanup',
-      notes: 'Review access to systems, folders, shared drives, and vendor admin credentials.' }),
+      notes: 'Deferred — revisit within two weeks of completing Week 2 priorities. Review access to systems, folders, shared drives, and vendor admin credentials.' }),
   T('sec-cleanup-tweaks', 'sec', 'Cleanup — Proposal of any tweaks',
-    '2026-05-18', ['RD'], [], 'med',
-    { status: 'not_started', subgroup: 'cleanup' }),
+    '2026-06-03', ['RD'], [], 'med',
+    { status: 'not_started', subgroup: 'cleanup',
+      notes: 'Deferred — follows cleanup review.' }),
   T('sec-cleanup-next', 'sec', 'Cleanup — Determine next steps & rollout',
-    '2026-05-19', ['RD'], ['JE'], 'med',
+    '2026-06-05', ['RD'], ['JE'], 'med',
     { status: 'not_started', subgroup: 'cleanup' }),
 
   // ── MOS ───────────────────────────────────────────────────────────────────
