@@ -71,8 +71,8 @@ const e = (n) => n * 7 - 1; // end-of-week is inclusive last day
 const GANTT_BARS = [
   // IT Security — parallel sub-tracks
   { ws: 'sec',    label: 'Posture assessment',        d0: w(1),     d1: w(1) + 5,  taskIds: ['sec-baa', 'sec-1', 'sec-2', 'sec-mfa-ga'] },
-  { ws: 'sec',    label: 'MFA',                       d0: w(1) + 1, d1: w(4) + 4,  taskIds: ['sec-4', 'sec-ou', 'sec-mfa-admin', 'sec-mfa-dc', 'sec-mfa-other'] },
-  { ws: 'sec',    label: 'SSO',                       d0: w(2),     d1: w(4) + 4,  taskIds: ['sec-sso-assess', 'sec-3', 'sec-sso-rollout', 'sec-8'] },
+  { ws: 'sec',    label: 'Google Workspace MFA',                      d0: w(1) + 1, d1: w(4) + 4,  taskIds: ['sec-4', 'sec-ou', 'sec-mfa-admin', 'sec-mfa-dc', 'sec-mfa-other'] },
+  { ws: 'sec',    label: 'Google Workspace SSO/Non Google SSO',       d0: w(2),     d1: w(6),      taskIds: ['sec-sso-assess', 'sec-3', 'sec-sso-rollout', 'sec-8'] },
   { ws: 'sec',    label: 'Access Mgmt / Security',    d0: w(1) + 3, d1: e(3),      taskIds: ['sec-onboard-sop', 'sec-offboard-sop', 'sec-onboard-decide', 'sec-offboard-decide', 'sec-onboard-comms', 'sec-offboard-comms', 'sec-onboard-impl', 'sec-offboard-impl', 'sec-superadmin', 'sec-rbac-review', 'sec-rbac-tweaks', 'sec-rbac-next', 'sec-cleanup-review', 'sec-cleanup-tweaks', 'sec-cleanup-next', 'sec-5', 'sec-7'] },
   { ws: 'sec',    label: 'Roadmap delivered',         d0: w(2) + 3, d1: e(2),      taskIds: ['sec-6'] },
 
