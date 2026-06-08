@@ -79,13 +79,6 @@ const SEC_SYSTEMS = [
     ssoNotes: 'SSO capability unknown. Vendor review required.',
     action: 'PRIORITY: (1) Contact Netstudy 2.0 support to confirm MFA options. (2) Audit all current portal access — restrict to HR-authorized personnel only. (3) Confirm data retention and deletion policy. Highest-sensitivity PII in the stack.',
   },
-  {
-    name: 'Alerus', category: 'Finance / Payroll & Benefits',
-    mfa: 'unknown', sso: 'unknown', risk: 'critical', priority: 1, rollout: 'validate',
-    mfaNotes: 'Alerus MFA capabilities need vendor validation. As a financial services platform handling payroll and 401(k) data, MFA is critical.',
-    ssoNotes: 'SSO support unknown. Contact Alerus account manager or support.',
-    action: 'PRIORITY: Contact Alerus support to confirm MFA options. Audit who has payroll/plan admin access. Restrict to authorized personnel only — financial and retirement data.',
-  },
   // ── High · Phase 1 ───────────────────────────────────────────────────────
   {
     name: 'Zoho CRM', category: 'CRM / Sales',
@@ -154,13 +147,6 @@ const SEC_SYSTEMS = [
   },
   // ── Medium · Phase 2 ──────────────────────────────────────────────────────
   {
-    name: 'Calendly', category: 'Scheduling / Productivity',
-    mfa: 'full', sso: 'partial', risk: 'medium', priority: 3, rollout: 'phase2',
-    mfaNotes: 'Google Authenticator TOTP supported. Users can also sign in via Google OAuth (acts as an implicit 2FA layer if Google 2FA is enforced).',
-    ssoNotes: 'Google OAuth login available on all plans. SAML SSO requires Enterprise plan. Enforcing Google 2FA at the IdP level effectively secures Calendly logins.',
-    action: 'Ensure all users log in via Google OAuth (not email/password). Once Google 2FA is enforced org-wide, Calendly is covered by default.',
-  },
-  {
     name: 'Indeed', category: 'HR / Recruiting',
     mfa: 'full', sso: 'partial', risk: 'medium', priority: 3, rollout: 'phase2',
     mfaNotes: 'Google Authenticator TOTP supported. MFA can be enabled per account in Indeed account settings.',
@@ -180,15 +166,6 @@ const SEC_SYSTEMS = [
     mfaNotes: 'TOTP authenticator app supported. Google account sign-in available on all plans.',
     ssoNotes: 'Google OAuth on all plans. SAML SSO available on Canva for Teams and Enterprise plans.',
     action: 'Ensure all users sign in via Google account (not email/password). Enable Google SAML SSO if on Teams plan.',
-  },
-  // ── Inactive / Future ─────────────────────────────────────────────────────
-  {
-    name: 'AUZMOR (OSMOR)', category: 'Learning / Operations',
-    mfa: 'unknown', sso: 'unknown', risk: 'medium', priority: 4, rollout: 'inactive',
-    inactive: true,
-    mfaNotes: 'Not currently in active use. MFA and SSO capabilities TBD if/when platform is activated.',
-    ssoNotes: 'Not applicable — platform not currently in use.',
-    action: 'No action needed now. If BrightPath activates AUZMOR in the future, conduct full MFA/SSO review at that time.',
   },
 ];
 
@@ -228,7 +205,6 @@ const SSO_COMPAT = [
   // ── Upgrade Required ──────────────────────────────────────────────────
   { name: 'JazzHR',            sso: 'upgrade', protocol: 'SAML 2.0',      notes: 'Plan upgrade likely required. Confirm with vendor.'                         },
   { name: 'When I Work',       sso: 'upgrade', protocol: 'SAML 2.0',      notes: 'Enterprise tier may be required. Validate.'                                 },
-  { name: 'Calendly',          sso: 'upgrade', protocol: 'OAuth / SAML',   notes: 'Google OAuth on all plans. SAML SSO requires Enterprise plan upgrade.'      },
   { name: 'Indeed',            sso: 'upgrade', protocol: 'OAuth',          notes: 'Google Sign-In available. Full SAML SSO not supported — OAuth is best available option.' },
   { name: 'Squarespace',       sso: 'upgrade', protocol: 'OAuth',          notes: 'Google account sign-in available. No SAML SSO support.'                    },
   { name: 'Bill.com',          sso: 'upgrade', protocol: 'SAML 2.0',       notes: 'SSO on Business/Enterprise plans. Confirm current plan tier.'              },
@@ -239,7 +215,6 @@ const SSO_COMPAT = [
   { name: 'Centrally HR',      sso: 'unknown', protocol: '?',              notes: 'Vendor validation required. E-Verify is embedded but not currently in use.' },
   { name: 'Therap EHR',        sso: 'unknown', protocol: '?',              notes: 'No confirmed SAML. Vendor-managed auth. Priority validation.'               },
   { name: 'Netstudy 2.0',      sso: 'unknown', protocol: '?',              notes: 'Vendor validation required — handles highest-sensitivity PII in the stack.' },
-  { name: 'Alerus',            sso: 'unknown', protocol: '?',              notes: 'Financial services platform — vendor validation required.'                  },
   { name: 'Zizzl',             sso: 'unknown', protocol: '?',              notes: 'Benefits platform — vendor validation required.'                            },
   { name: 'Star Services LMS', sso: 'unknown', protocol: '?',              notes: 'Vendor review required.'                                                    },
 ];
@@ -1410,13 +1385,12 @@ const MFAHeatmap = ({ secOwners, onSecOwnerChange, secOverrides, onSecOverrideCh
             <div className="sec-tl-content">
               <div className="sec-tl-phase">Vendor Validation — Parallel Track</div>
               <div className="sec-tl-date">Ongoing through May 31</div>
-              <div className="sec-tl-desc">Contact Centrally HR, Therap EHR, Star LMS, Netstudy 2.0, Alerus, and Zizzl to confirm MFA and SSO capabilities. Results determine final rollout scope and whether any systems need compensating controls.</div>
+              <div className="sec-tl-desc">Contact Centrally HR, Therap EHR, Star LMS, Netstudy 2.0, and Zizzl to confirm MFA and SSO capabilities. Results determine final rollout scope and whether any systems need compensating controls.</div>
               <div className="sec-tl-targets">
                 <span className="sec-tl-tag sec-tl-tag-gray">Centrally HR</span>
                 <span className="sec-tl-tag sec-tl-tag-gray">Therap EHR</span>
                 <span className="sec-tl-tag sec-tl-tag-gray">Star LMS</span>
                 <span className="sec-tl-tag sec-tl-tag-gray">Netstudy 2.0</span>
-                <span className="sec-tl-tag sec-tl-tag-gray">Alerus</span>
                 <span className="sec-tl-tag sec-tl-tag-gray">Zizzl</span>
               </div>
             </div>
