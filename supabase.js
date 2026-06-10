@@ -140,6 +140,7 @@
         ssoStatus:       r.sso_status,
         riskLevel:       r.risk_level,
         ssoCompatStatus: r.sso_compat_status,
+        implStatus:      r.impl_status,
       };
     }
     return map;
@@ -156,6 +157,7 @@
     if ('ssoStatus' in patch) row.sso_status = patch.ssoStatus;
     if ('riskLevel'       in patch) row.risk_level        = patch.riskLevel;
     if ('ssoCompatStatus' in patch) row.sso_compat_status = patch.ssoCompatStatus;
+    if ('implStatus'      in patch) row.impl_status       = patch.implStatus;
     const { error } = await db.from('sec_overrides').upsert(row, { onConflict: 'system_name' });
     if (error) console.error('[Supabase] upsertSecOverride:', error.message);
   }

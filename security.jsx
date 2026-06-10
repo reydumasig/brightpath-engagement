@@ -34,6 +34,13 @@ const ROLLOUT_ST = {
   inactive: { label: 'Not Active',       bg: '#f8fafc', fg: '#94a3b8' },
 };
 
+const IMPL_ST = {
+  not_started: { label: 'Not Started',              bg: '#f1f5f9', fg: '#475569', dot: '#94a3b8' },
+  in_progress:  { label: 'In Progress',             bg: '#fef3c7', fg: '#92400e', dot: '#d97706' },
+  comms:        { label: 'For Communication Rollout', bg: '#dbeafe', fg: '#1d4ed8', dot: '#2563eb' },
+  completed:    { label: 'Completed',               bg: '#dcfce7', fg: '#15803d', dot: '#16a34a' },
+};
+
 const SEC_SYSTEMS = [
   // ── Critical · Phase 1 ────────────────────────────────────────────────────
   {
@@ -1165,6 +1172,7 @@ const MFAHeatmap = ({ secOwners, onSecOwnerChange, secOverrides, onSecOverrideCh
                 <th className="sec-hm-cell">SSO Support</th>
                 <th className="sec-hm-cell">Risk Level</th>
                 <th className="sec-hm-cell">Rollout Phase</th>
+                <th className="sec-hm-cell">Implementation</th>
                 <th className="sec-hm-owner">Owner</th>
                 <th className="sec-hm-action"></th>
               </tr>
@@ -1221,6 +1229,13 @@ const MFAHeatmap = ({ secOwners, onSecOwnerChange, secOverrides, onSecOverrideCh
                           <span className="sec-badge sec-badge-sm" style={{ background: ROLLOUT_ST[s.rollout]?.bg, color: ROLLOUT_ST[s.rollout]?.fg }}>
                             {ROLLOUT_ST[s.rollout]?.label}
                           </span>
+                        </td>
+                        <td className="sec-hm-cell-val">
+                          <SecPicker
+                            value={ov.implStatus ?? 'not_started'}
+                            options={['not_started', 'in_progress', 'comms', 'completed']}
+                            config={IMPL_ST}
+                            onChange={(v) => onSecOverrideChange(s.name, { implStatus: v })} />
                         </td>
                         <td className="sec-hm-owner-cell">
                           <SecOwnerPicker
