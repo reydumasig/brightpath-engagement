@@ -1513,7 +1513,8 @@ body {
 .sec-hm-row-inactive { opacity: 0.45; }
 .sec-hm-row-inactive .sec-hm-name::after { content: ' — inactive'; font-size: 10px; font-weight: 400; color: var(--text-3); margin-left: 6px; }
 .sec-hm-row td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-.sec-hm-system-cell { font-weight: 600; color: var(--text-1); }
+.sec-hm-system-cell { font-weight: 600; color: var(--text-1); display: flex; align-items: center; gap: 9px; }
+.sec-sys-logo { width: 22px; height: 22px; border-radius: 5px; object-fit: contain; flex-shrink: 0; background: var(--bg); border: 1px solid var(--border); padding: 1px; }
 .sec-hm-cat-cell { font-size: 12px; color: var(--text-2); }
 .sec-hm-cell-val { white-space: nowrap; }
 .sec-hm-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; flex-shrink: 0; }
