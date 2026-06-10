@@ -476,6 +476,7 @@ function App() {
     { id: 'workplan', label: 'Workplan',        sub: `${tasks.length} tasks` },
     { id: 'weekly',   label: 'Weekly Progress', sub: `Week ${currentWeekIdx + 1} of 13` },
     { id: 'security', label: 'Security Hub',    sub: 'MFA · SSO · Access' },
+    { id: 'claude',   label: 'Claude AI',       sub: 'Integrations · MCPs' },
   ];
 
   return (
@@ -586,6 +587,12 @@ function App() {
       {tab === 'security' && (
         <section className="section">
           <window.SecurityHub OwnerFilter={OwnerFilter} />
+        </section>
+      )}
+
+      {tab === 'claude' && (
+        <section className="section">
+          <window.ClaudeRollout />
         </section>
       )}
 
