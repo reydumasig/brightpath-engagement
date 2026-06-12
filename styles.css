@@ -1303,6 +1303,7 @@ body {
   font-weight: 600;
   font-family: var(--mono);
 }
+.wk-item-owner-client { background: #7c2d12; }
 .wk-item-x {
   background: transparent;
   border: 0;

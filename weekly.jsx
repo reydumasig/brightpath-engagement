@@ -507,6 +507,9 @@ function Section({
                   {(t.owner_s360 || []).map((p) => (
                     <span key={p} className="wk-item-owner" title={window.PEOPLE[p] ? window.PEOPLE[p].name : p}>{window.PEOPLE[p] ? window.PEOPLE[p].initials : p}</span>
                   ))}
+                  {(t.owner_client || []).map((p) => (
+                    <span key={p} className="wk-item-owner wk-item-owner-client" title={window.PEOPLE[p] ? window.PEOPLE[p].name : p}>{window.PEOPLE[p] ? window.PEOPLE[p].initials : p}</span>
+                  ))}
                 </div>
               </div>
               <button className="wk-item-x" onClick={() => onExclude(t.id)} title="Remove from this section">×</button>
