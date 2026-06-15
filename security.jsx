@@ -1836,6 +1836,7 @@ const SecurityHub = ({ OwnerFilter }) => {
     { id: 'team',   label: 'Team 2FA',       sub: 'Manager accountability' },
     { id: 'plan',   label: 'Impl. Plan',     sub: 'MFA + SSO roadmap' },
     { id: 'sop',    label: 'SOP Review',     sub: 'Onboarding & offboarding' },
+    { id: 'rbac',   label: 'RBAC Review',    sub: 'Access matrix & next steps' },
   ];
 
   return (
@@ -1866,6 +1867,7 @@ const SecurityHub = ({ OwnerFilter }) => {
       {section === 'team'   && <window.TeamCompliance />}
       {section === 'plan'   && <window.SecurityPlan />}
       {section === 'sop'    && <window.SopReview />}
+      {section === 'rbac'   && <window.RBACReview />}
     </div>
   );
 };
