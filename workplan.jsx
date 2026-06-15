@@ -220,7 +220,7 @@ const CommentThread = ({ task, onAddComment, currentUser, setCurrentUser }) => {
       {task.notes && (
         <div className="comment-note">
           <span className="comment-note-tag">NOTE</span>
-          {task.notes}
+          <span style={{ whiteSpace: 'pre-line' }}>{task.notes}</span>
         </div>
       )}
       <div className="comment-compose">
