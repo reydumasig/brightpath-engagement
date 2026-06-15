@@ -398,7 +398,7 @@ function ExtraSection({ icon, title, narrativeValue, onNarrativeChange, narrativ
           {items.map((item) => (
             <li key={item.id} className="wk-extra-item">
               <span className="wk-extra-item-dot" />
-              <span className="wk-extra-item-text">{item.text}</span>
+              <span className="wk-extra-item-text" style={{ whiteSpace: 'pre-line' }}>{item.text}</span>
               <button className="wk-item-x" onClick={() => onRemove(item.id)} title="Remove">×</button>
             </li>
           ))}
@@ -409,17 +409,26 @@ function ExtraSection({ icon, title, narrativeValue, onNarrativeChange, narrativ
         {!adding ? (
           <button className="wk-add-btn" onClick={() => setAdding(true)}>+ Add item</button>
         ) : (
-          <div className="wk-add-risk">
-            <input
-              className="wk-add-input"
+          <div className="wk-add-risk wk-add-risk-multiline">
+            <textarea
+              className="wk-add-input wk-add-textarea"
               placeholder={inputPlaceholder}
               value={text}
+              rows={3}
               onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') { setAdding(false); setText(''); } }}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') { setAdding(false); setText(''); }
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); handleAdd(); }
+              }}
               autoFocus
             />
-            <button className="wk-add-save" onClick={handleAdd} disabled={!text.trim()}>Add</button>
-            <button className="wk-add-cancel" onClick={() => { setAdding(false); setText(''); }}>Cancel</button>
+            <div className="wk-add-actions">
+              <span className="wk-add-hint">Ctrl+Enter to add · Esc to cancel</span>
+              <div className="wk-add-btns">
+                <button className="wk-add-save" onClick={handleAdd} disabled={!text.trim()}>Add</button>
+                <button className="wk-add-cancel" onClick={() => { setAdding(false); setText(''); }}>Cancel</button>
+              </div>
+            </div>
           </div>
         )}
       </div>

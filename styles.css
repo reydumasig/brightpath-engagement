@@ -1367,6 +1367,17 @@ body {
   background: transparent; border: 1px solid var(--border);
   border-radius: 6px; padding: 7px 12px; font-size: 12px; color: var(--text-3); cursor: pointer;
 }
+.wk-add-risk-multiline { flex-direction: column; align-items: stretch; }
+.wk-add-textarea {
+  width: 100%; resize: vertical; min-height: 72px;
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 8px 10px; font-size: 13px; font-family: var(--font);
+  background: var(--surface); line-height: 1.5;
+}
+.wk-add-textarea:focus { outline: none; border-color: var(--text); }
+.wk-add-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.wk-add-hint { font-size: 11px; color: var(--text-4); }
+.wk-add-btns { display: flex; gap: 8px; }
 
 /* Optional sections */
 .wk-extras {
