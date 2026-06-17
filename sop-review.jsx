@@ -82,10 +82,11 @@ const SOP_GAPS = [
 const PROPOSED_ONBOARDING_A = [
   { step: 1, owner: 'JazzHR → HRIS', action: 'Automated trigger: "Hired" status in JazzHR notifies IT and HR simultaneously via integrated workflow', badge: 'Automated', color: '#059669' },
   { step: 2, owner: 'IT (automated)', action: 'GWS account auto-created by provisioning script on start date morning — Frontline Starter license assigned via group membership', badge: 'Automated', color: '#059669' },
-  { step: 3, owner: 'HR', action: 'I-9 verification at orientation. CentrallyHR record created via standardized template or integration', badge: 'Process', color: '#0284c7' },
-  { step: 4, owner: 'IT (policy)', action: 'Google Admin Console enforces 2FA enrollment prompt at first login — cannot be dismissed', badge: 'Policy-Enforced', color: '#7c3aed' },
-  { step: 5, owner: 'Training', action: 'Provides setup guide and support for Authenticator enrollment. Shares files via Shared Drive membership (not individual share)', badge: 'Support', color: '#d97706' },
-  { step: 6, owner: 'IT', action: 'IT confirms account setup complete — sends confirmation to HR and hiring manager', badge: 'Sign-off', color: '#475569' },
+  { step: 3, owner: 'Training / IT', action: 'RBAC applied to relevant systems: Training or hiring manager selects Frontline role type in onboarding tracker. Required systems auto-populated (Therap EHR, When I Work, Star LMS). System admins confirm access granted per system before Day 1.', badge: 'RBAC', color: '#6366f1' },
+  { step: 4, owner: 'HR', action: 'I-9 verification at orientation. CentrallyHR record created via standardized template or integration', badge: 'Process', color: '#0284c7' },
+  { step: 5, owner: 'IT (policy)', action: 'Google Admin Console enforces 2FA enrollment prompt at first login — cannot be dismissed', badge: 'Policy-Enforced', color: '#7c3aed' },
+  { step: 6, owner: 'Training', action: 'Provides setup guide and support for Authenticator enrollment. Shares files via Shared Drive membership (not individual share)', badge: 'Support', color: '#d97706' },
+  { step: 7, owner: 'IT', action: 'IT confirms account setup complete — sends confirmation to HR and hiring manager', badge: 'Sign-off', color: '#475569' },
 ];
 
 const PROPOSED_ONBOARDING_B = [
