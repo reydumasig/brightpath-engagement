@@ -255,10 +255,11 @@ const SSO_ST = {
 const ONBOARDING_STEPS = [
   { step: 1, title: 'Create Google Workspace account',     owner: 'IT/Admin', detail: 'Admin Console → Users → Add User. Assign to correct OU (Leadership / Corporate / Direct Care / Contractor). Set temp password with forced reset on first login.' },
   { step: 2, title: 'Enroll in 2FA immediately',           owner: 'Employee', detail: 'Employee downloads Google Authenticator. Admin can enforce 2FA enrollment period (7 days) before access is granted.' },
-  { step: 3, title: 'Provision SaaS app access via SSO',   owner: 'IT/Admin', detail: 'For Google SSO-enabled apps (Zoho CRM, DocuSign, Adobe, Canva): no separate account creation needed — employee signs in with Google. For non-SSO apps (QBO, Therap, LinkedIn): create dedicated account and store in password manager.' },
-  { step: 4, title: 'Assign role-based permissions',       owner: 'Manager + IT', detail: 'Confirm correct OU in Google Admin (controls app restrictions and policy). Assign CRM role in Zoho. Assign schedule in When I Work. Assign LMS courses in Star LMS. Provision Adobe Acrobat and DocuSign as needed by role.' },
-  { step: 5, title: 'Send credential brief to employee',   owner: 'IT/Admin', detail: 'Share password manager vault entry (if applicable) via secure channel — NOT email. Provide Google account login link and 2FA setup guide.' },
-  { step: 6, title: 'Log onboarding in access registry',   owner: 'IT/Admin', detail: 'Record: employee name, date, OU, apps provisioned, 2FA enrolled (Y/N), approving manager. Retain for audit purposes.' },
+  { step: 3, title: 'RBAC applied to relevant systems',    owner: 'Hiring Manager / TA → IT/Admin', detail: 'Hiring manager or TA assigns the employee\'s role type (e.g. Frontline, Corporate, Leadership, Contractor) in the onboarding tracker. System admins review the auto-populated required systems list and confirm access has been granted for each. Tracked in MOS onboarding tracker — see Proposed Tracker below.', badge: 'NEW' },
+  { step: 4, title: 'Provision SaaS app access via SSO',   owner: 'IT/Admin', detail: 'For Google SSO-enabled apps (Zoho CRM, DocuSign, Adobe, Canva): no separate account creation needed — employee signs in with Google. For non-SSO apps (QBO, Therap, LinkedIn): create dedicated account and store in password manager.' },
+  { step: 5, title: 'Assign role-based permissions',       owner: 'Manager + IT', detail: 'Confirm correct OU in Google Admin (controls app restrictions and policy). Assign CRM role in Zoho. Assign schedule in When I Work. Assign LMS courses in Star LMS. Provision Adobe Acrobat and DocuSign as needed by role.' },
+  { step: 6, title: 'Send credential brief to employee',   owner: 'IT/Admin', detail: 'Share password manager vault entry (if applicable) via secure channel — NOT email. Provide Google account login link and 2FA setup guide.' },
+  { step: 7, title: 'Log onboarding in access registry',   owner: 'IT/Admin', detail: 'Record: employee name, date, OU, apps provisioned, 2FA enrolled (Y/N), approving manager. Retain for audit purposes.' },
 ];
 
 const OFFBOARDING_STEPS = [
@@ -1679,12 +1680,66 @@ const AccessMgmt = () => {
             <div key={s.step} className="sec-process-step">
               <div className="sec-process-num">{s.step}</div>
               <div className="sec-process-content">
-                <div className="sec-process-title">{s.title}</div>
+                <div className="sec-process-title">
+                  {s.title}
+                  {s.badge && <span className="sec-process-badge">{s.badge}</span>}
+                </div>
                 <div className="sec-process-owner">Owner: <strong>{s.owner}</strong></div>
                 <div className="sec-process-detail">{s.detail}</div>
               </div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Proposed MOS Onboarding Tracker */}
+      <div className="sec-block sec-mos-tracker-block">
+        <div className="sec-block-head">
+          <div>
+            <div className="sec-block-eyebrow">MOS · PROPOSED BUILD</div>
+            <h3 className="sec-block-title">New Hire Onboarding Tracker</h3>
+          </div>
+          <span className="sec-proposal-tag">Proposal</span>
+        </div>
+        <p className="sec-explainer">
+          Automates RBAC provisioning as part of the new hire workflow. Triggered by a JazzHR hired status change — no manual handoff required.
+        </p>
+        <div className="sec-mos-tracker-steps">
+          <div className="sec-mos-step">
+            <div className="sec-mos-step-icon">⚡</div>
+            <div className="sec-mos-step-content">
+              <div className="sec-mos-step-num">Trigger</div>
+              <div className="sec-mos-step-title">JazzHR Hired Status</div>
+              <div className="sec-mos-step-detail">When a candidate is marked "Hired" in JazzHR, the onboarding tracker automatically creates a new hire record in MOS and notifies the hiring manager to begin the provisioning workflow.</div>
+            </div>
+          </div>
+          <div className="sec-mos-step">
+            <div className="sec-mos-step-icon">👤</div>
+            <div className="sec-mos-step-content">
+              <div className="sec-mos-step-num">Step 1</div>
+              <div className="sec-mos-step-title">Prompt: Assign RBAC Role Type</div>
+              <div className="sec-mos-step-detail">Hiring manager or TA selects the employee's role type from a dropdown: <strong>Frontline Staff</strong>, <strong>Corporate / Admin</strong>, <strong>Leadership</strong>, <strong>Designated Coordinator</strong>, <strong>Contractor</strong>. This maps directly to the BrightPath OU structure.</div>
+            </div>
+          </div>
+          <div className="sec-mos-step">
+            <div className="sec-mos-step-icon">🗂️</div>
+            <div className="sec-mos-step-content">
+              <div className="sec-mos-step-num">Step 2</div>
+              <div className="sec-mos-step-title">Auto-Populate Required Systems</div>
+              <div className="sec-mos-step-detail">Based on the selected RBAC role, the tracker automatically generates the list of systems that need to be provisioned — pulling from the Access by OU matrix. No manual lookup needed by IT.</div>
+            </div>
+          </div>
+          <div className="sec-mos-step">
+            <div className="sec-mos-step-icon">✅</div>
+            <div className="sec-mos-step-content">
+              <div className="sec-mos-step-num">Step 3</div>
+              <div className="sec-mos-step-title">Track Access Confirmation per System</div>
+              <div className="sec-mos-step-detail">Each system in the list has a confirmation checkbox for the system admin. Tracker stays open until all required systems are confirmed. Escalates to IT lead if not completed within 2 business days of start date.</div>
+            </div>
+          </div>
+        </div>
+        <div className="sec-mos-tracker-note">
+          <span className="sec-mos-note-label">Integration path:</span> JazzHR webhook → MOS (Zoho CRM / custom) → Access by OU matrix lookup → per-system task assignment → completion tracking
         </div>
       </div>
 

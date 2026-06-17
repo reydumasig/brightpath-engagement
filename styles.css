@@ -1674,6 +1674,21 @@ body {
 .sec-process-time-urgent { background: #fee2e2; color: #b91c1c; }
 .sec-offboard-note { display: flex; align-items: center; gap: 10px; }
 .sec-urgent-tag { background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
+.sec-process-badge { font-size: 9.5px; font-weight: 700; letter-spacing: .04em; background: #dcfce7; color: #15803d; padding: 2px 8px; border-radius: 20px; text-transform: uppercase; }
+
+/* MOS Onboarding Tracker proposal */
+.sec-mos-tracker-block { border-left: 3px solid #6366f1; }
+.sec-proposal-tag { background: #eef2ff; color: #4338ca; font-size: 11px; font-weight: 700; padding: 3px 12px; border-radius: 20px; letter-spacing: .03em; flex-shrink: 0; }
+.sec-mos-tracker-steps { display: flex; flex-direction: column; gap: 0; padding: 4px 22px 20px; }
+.sec-mos-step { display: flex; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--border); }
+.sec-mos-step:last-child { border-bottom: none; }
+.sec-mos-step-icon { font-size: 20px; width: 36px; height: 36px; display: grid; place-items: center; background: #f1f5f9; border-radius: 10px; flex-shrink: 0; margin-top: 1px; }
+.sec-mos-step-content { flex: 1; }
+.sec-mos-step-num { font-size: 10.5px; font-weight: 700; color: #6366f1; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 3px; }
+.sec-mos-step-title { font-size: 13.5px; font-weight: 600; color: var(--text-1); margin-bottom: 5px; }
+.sec-mos-step-detail { font-size: 12.5px; color: var(--text-2); line-height: 1.55; }
+.sec-mos-tracker-note { margin: 0 22px 20px; padding: 12px 16px; background: #f8fafc; border: 1px solid var(--border); border-radius: 9px; font-size: 12px; color: var(--text-2); line-height: 1.5; }
+.sec-mos-note-label { font-weight: 700; color: var(--text-1); margin-right: 6px; }
 
 /* cleanup items */
 .sec-cleanup-list { display: flex; flex-direction: column; gap: 0; padding: 16px 22px 20px; }
